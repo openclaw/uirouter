@@ -103,6 +103,39 @@ describe("router subscriptions", () => {
     expect(statuses).toContain("success");
     expect(selectedStatuses).toEqual(["loading", "success"]);
   });
+
+  it("notifies match subscribers for the selected match only", async () => {
+    let loadCount = 0;
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      routes: [
+        definePage<"chat", TestContext, TestModule, TestData>({
+          id: "chat",
+          path: "/chat",
+          component: () => ({ view: "chat" }),
+          loader: (context) => {
+            loadCount += 1;
+            return { label: `${context.label}:${loadCount}`, route: "chat" };
+          },
+        }),
+      ],
+    });
+    await router.navigate("chat", { label: "agent" });
+    const matchId = router.getState().matches[0]?.id;
+    if (!matchId) {
+      throw new Error("expected active match");
+    }
+
+    const updates: string[] = [];
+    const unsubscribe = router.subscribeMatch(matchId, (match) => {
+      updates.push(`${match?.status}:${match?.isFetching}:${match?.data?.label}`);
+    });
+
+    await router.invalidate("chat");
+    expect(unsubscribe()).toBe(true);
+
+    expect(updates).toContain("success:loader:agent:1");
+    expect(updates.at(-1)).toBe("success:false:agent:2");
+  });
 });
 
 describe("router history", () => {

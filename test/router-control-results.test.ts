@@ -99,4 +99,55 @@ describe("router control results", () => {
       pendingMatches: [],
     });
   });
+
+  it("publishes loader errors and lets revalidation retry the active route", async () => {
+    const failure = new Error("load failed");
+    let loadCount = 0;
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      routes: [
+        definePage<"source", TestContext, TestModule, TestData>({
+          id: "source",
+          path: "/source",
+          component: () => ({ view: "source" }),
+          loader: (context) => {
+            loadCount += 1;
+            if (loadCount === 1) {
+              throw failure;
+            }
+            return { label: context.label };
+          },
+        }),
+      ],
+    });
+
+    await expect(router.navigate("source", { label: "agent" })).rejects.toBe(failure);
+
+    expect(router.getState()).toMatchObject({
+      status: "error",
+      matches: [
+        {
+          routeId: "source",
+          status: "error",
+          error: failure,
+          isFetching: false,
+        },
+      ],
+    });
+
+    await router.revalidate({ label: "retried" });
+
+    expect(loadCount).toBe(2);
+    expect(router.getState()).toMatchObject({
+      status: "success",
+      matches: [
+        {
+          routeId: "source",
+          status: "success",
+          data: { label: "retried" },
+          error: undefined,
+          invalid: false,
+        },
+      ],
+    });
+  });
 });
