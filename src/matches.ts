@@ -5,7 +5,7 @@ import type {
   RouterOptions,
   RouterState,
   RouterStateSelector,
-} from "./types.ts";
+} from "./types";
 
 export type MatchStore<TRouteId extends string, TModule, TData> = {
   batch: (operation: () => void) => void;
@@ -44,10 +44,7 @@ export type CompiledRoutes<TRouteId extends string, TLoadContext, TModule, TData
   routeIdFromPath: (pathname: string, basePath?: string) => TRouteId | null;
 };
 
-export function matchIdForLocation<TRouteId extends string>(
-  routeId: TRouteId,
-  deps: string,
-): string {
+export function matchIdForLocation(routeId: string, deps: string): string {
   return `${routeId}\u0000${deps}`;
 }
 

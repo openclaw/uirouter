@@ -1,5 +1,5 @@
-export { createRouter } from "./router.ts";
-export { normalizeRouteBasePath, normalizeRoutePath } from "./matches.ts";
+export { createRouter } from "./router";
+export { normalizeRouteBasePath, normalizeRoutePath } from "./matches";
 export {
   definePage,
   notFound,
@@ -21,4 +21,4 @@ export {
   type RouterState,
   type RouterStateSelector,
   type RouterHistory,
-} from "./types.ts";
+} from "./types";

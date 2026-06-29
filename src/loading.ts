@@ -1,4 +1,4 @@
-import type { MatchStore } from "./matches.ts";
+import type { MatchStore } from "./matches";
 import type {
   MaybePromise,
   PageDefinition,
@@ -7,15 +7,15 @@ import type {
   RouteNotFound,
   RouteRedirect,
   RouteStaleReloadMode,
-} from "./types.ts";
+} from "./types";
 
 export type RouteLoadResult<TModule, TData> = {
-  data: TData;
+  data: TData | undefined;
   module: TModule;
 };
 
 type RouteDataResult<TData> = {
-  data: TData;
+  data: TData | undefined;
   updatedAt: number;
 };
 
@@ -55,9 +55,13 @@ function isRouteControl(value: unknown): value is RouteNotFound | RouteRedirect 
   return (
     typeof value === "object" &&
     value !== null &&
-    ((value as RouteNotFound | RouteRedirect).type === "notFound" ||
-      (value as RouteNotFound | RouteRedirect).type === "redirect")
+    "type" in value &&
+    (value.type === "notFound" || value.type === "redirect")
   );
+}
+
+function now(): number {
+  return Date.now();
 }
 
 export function createRouteLoading<TRouteId extends string, TLoadContext, TModule, TData>(
@@ -67,7 +71,6 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
   const moduleCache = new Map<TRouteId, Promise<TModule>>();
   const inFlight = new Map<string, Promise<RouteLoadResult<TModule, TData>>>();
   const gcTimers = new Map<string, ReturnType<typeof globalThis.setTimeout>>();
-  const now = () => Date.now();
   const freshTimeFor = (
     match: RouteMatch<TRouteId, TModule, TData>,
     route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
@@ -153,14 +156,13 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
         preload: hookOptions.cause === "preload",
       }));
       scheduleGc(current, route);
-      return Promise.resolve({ data: current.data as TData, updatedAt: current.updatedAt });
+      return Promise.resolve({ data: current.data, updatedAt: current.updatedAt });
     }
-    return Promise.resolve(
-      route.loader?.(context, {
-        ...hookOptions,
-        deps: current.deps,
-      }) as MaybePromise<TData>,
-    ).then((data) => {
+    const loaded: MaybePromise<TData> | undefined = route.loader?.(context, {
+      ...hookOptions,
+      deps: current.deps,
+    });
+    return Promise.resolve(loaded).then((data) => {
       if (isRouteControl(data)) {
         throw data;
       }

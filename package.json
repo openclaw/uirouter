@@ -1,0 +1,63 @@
+{
+  "name": "@openclaw/uirouter",
+  "version": "0.1.0",
+  "description": "Small route matching, loading, and navigation state router for OpenClaw UI surfaces.",
+  "keywords": [
+    "openclaw",
+    "router",
+    "typescript",
+    "ui"
+  ],
+  "homepage": "https://github.com/openclaw/uirouter#readme",
+  "bugs": {
+    "url": "https://github.com/openclaw/uirouter/issues"
+  },
+  "license": "MIT",
+  "author": "OpenClaw Team <dev@openclaw.ai>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openclaw/uirouter.git"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts --clean --target es2023 --no-fixedExtension",
+    "check": "pnpm run format:check && pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run pack:check",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint --type-aware --deny-warnings src scripts",
+    "pack:check": "node scripts/check-pack.mjs",
+    "prepack": "pnpm run build",
+    "typecheck": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@typescript/native-preview": "7.0.0-dev.20260629.1",
+    "oxfmt": "^0.56.0",
+    "oxlint": "^1.71.0",
+    "oxlint-tsgolint": "^0.23.0",
+    "tsdown": "^0.22.3",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  },
+  "packageManager": "pnpm@11.9.0"
+}
