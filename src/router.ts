@@ -216,7 +216,7 @@ export function createRouter<
         ? {
             ...match,
             isFetching: backgroundReload ? ("loader" as const) : (false as const),
-            preload: false,
+            preload: cachedFresh && !backgroundReload,
           }
         : undefined;
     let targetPublished = Boolean(activatedCachedMatch);
@@ -353,15 +353,18 @@ export function createRouter<
         return;
       }
 
-      const resolvedMatch = matches.getMatch(match.id) ?? {
-        ...match,
-        data: result.data,
-        module: result.module,
-        status: "success" as const,
-        isFetching: false as const,
-        error: undefined,
-        invalid: false,
-        updatedAt: Date.now(),
+      const resolvedMatch = {
+        ...(matches.getMatch(match.id) ?? {
+          ...match,
+          data: result.data,
+          module: result.module,
+          status: "success" as const,
+          isFetching: false as const,
+          error: undefined,
+          invalid: false,
+          updatedAt: Date.now(),
+        }),
+        preload: false,
       };
       const currentActive = targetPublished ? previous : matches.getActiveMatch();
       matches.batch(() => {
@@ -412,7 +415,7 @@ export function createRouter<
       }
     })();
     run.promise = navigation;
-    if (backgroundReload) {
+    if (backgroundReload && !revalidating) {
       void navigation.catch(() => undefined);
       return;
     }
@@ -523,7 +526,12 @@ export function createRouter<
       ) {
         return Promise.resolve();
       }
-      return navigate(active.routeId, lastContext.value, { history: "none" }, active.location);
+      return navigate(
+        active.routeId,
+        lastContext.value,
+        { history: "none", revalidate: true },
+        active.location,
+      );
     },
     getState: matches.getState,
     subscribe: matches.subscribe,
