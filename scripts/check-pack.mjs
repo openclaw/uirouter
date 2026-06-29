@@ -12,6 +12,14 @@ import { basename, dirname, join } from "node:path";
 
 const workdir = mkdtempSync(join(tmpdir(), "uirouter-pack-"));
 const npmCommand = resolveNpmCli();
+const expectedPackageFiles = [
+  "CHANGELOG.md",
+  "LICENSE",
+  "README.md",
+  "dist/index.d.ts",
+  "dist/index.js",
+  "package.json",
+];
 
 /**
  * @param {string[]} args
@@ -52,12 +60,20 @@ try {
   /** @type {Array<{ filename: string; files: Array<{ path: string }> }>} */
   const pack = JSON.parse(output);
   const [{ filename, files }] = pack;
-  const expected = ["dist/index.d.ts", "dist/index.js"];
-  const paths = new Set(files.map((file) => file.path));
-  for (const path of expected) {
-    if (!paths.has(path)) {
-      throw new Error(`packed package is missing ${path}`);
-    }
+  const paths = files.map((file) => file.path).toSorted();
+  const expected = expectedPackageFiles.toSorted();
+  const missing = expected.filter((path) => !paths.includes(path));
+  const unexpected = paths.filter((path) => !expected.includes(path));
+  if (missing.length > 0 || unexpected.length > 0) {
+    throw new Error(
+      [
+        "packed package file list mismatch",
+        missing.length > 0 ? `missing: ${missing.join(", ")}` : "",
+        unexpected.length > 0 ? `unexpected: ${unexpected.join(", ")}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
   }
 
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
