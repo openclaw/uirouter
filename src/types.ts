@@ -50,6 +50,8 @@ export type RouteHookOptions = {
 
 export type RouteLoaderOptions = RouteHookOptions;
 
+export type RouteLoaderResult<TData> = TData | RouteNotFound | RouteRedirect;
+
 export type RouterNavigationOptions = {
   history?: "none" | "push" | "replace";
   revalidate?: boolean;
@@ -66,7 +68,10 @@ export type PageDefinition<
   aliases?: readonly string[];
   component: () => MaybePromise<TModule>;
   loaderDeps?: (context: TLoadContext, location: RouteLocation) => string;
-  loader?: (context: TLoadContext, options: RouteLoaderOptions) => MaybePromise<TData>;
+  loader?: (
+    context: TLoadContext,
+    options: RouteLoaderOptions,
+  ) => MaybePromise<RouteLoaderResult<TData>>;
   staleTime?: number;
   staleReloadMode?: RouteStaleReloadMode;
   preloadStaleTime?: number;

@@ -9,6 +9,7 @@ export {
   type RouteHookOptions,
   type RouteLocation,
   type RouteLoadCause,
+  type RouteLoaderResult,
   type RouteLoaderOptions,
   type RouteMatch,
   type RouteMatchFetching,

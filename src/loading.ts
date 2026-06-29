@@ -6,6 +6,7 @@ import type {
   RouteMatch,
   RouteNotFound,
   RouteRedirect,
+  RouteLoaderResult,
   RouteStaleReloadMode,
 } from "./types";
 
@@ -158,7 +159,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       scheduleGc(current, route);
       return Promise.resolve({ data: current.data, updatedAt: current.updatedAt });
     }
-    const loaded: MaybePromise<TData> | undefined = route.loader?.(context, {
+    const loaded: MaybePromise<RouteLoaderResult<TData>> | undefined = route.loader?.(context, {
       ...hookOptions,
       deps: current.deps,
     });
