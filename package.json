@@ -39,12 +39,13 @@
   },
   "scripts": {
     "build": "tsdown src/index.ts --format esm --dts --clean --target es2023 --no-fixedExtension",
-    "check": "pnpm run format:check && pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run pack:check",
+    "check": "pnpm run format:check && pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run pack:check",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "lint": "oxlint --type-aware --deny-warnings src scripts",
+    "lint": "oxlint --type-aware --deny-warnings src scripts test",
     "pack:check": "node scripts/check-pack.mjs",
     "prepack": "pnpm run build",
+    "test": "vitest run",
     "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {
@@ -54,7 +55,8 @@
     "oxlint": "^1.71.0",
     "oxlint-tsgolint": "^0.23.0",
     "tsdown": "^0.22.3",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   },
   "engines": {
     "node": "^22.18.0 || >=24.11.0"
