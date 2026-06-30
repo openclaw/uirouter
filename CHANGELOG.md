@@ -38,3 +38,6 @@ Initial standalone release of `@openclaw/uirouter`.
 - Added GitHub Actions CI across Node 22 and Node 24 on Ubuntu, macOS, and
   Windows.
 - Added CodeQL scanning for JavaScript/TypeScript and GitHub Actions workflows.
+- Added tag-driven npm trusted-publishing release automation, stale triage,
+  CODEOWNERS, SECURITY.md, CONTRIBUTING.md, and the repository autoreview
+  helper.
