@@ -110,7 +110,8 @@ jobs:
           execFileSync("git", ["merge-base", "--is-ancestor", releaseSha, "origin/main"]);
           NODE
 
-      - name: Ensure version is unpublished
+      - name: Resolve npm publish state
+        id: npm-version
         run: |
           set -euo pipefail
           package_name="$(node -p "require('./package.json').name")"
@@ -120,16 +121,33 @@ jobs:
           status=$?
           set -e
           if [ "${status}" -eq 0 ]; then
-            echo "${package_name}@${package_version} is already published."
-            exit 1
+            echo "${package_name}@${package_version} is already published; treating this as a release rerun."
+            echo "published=true" >> "${GITHUB_OUTPUT}"
+            exit 0
           fi
           if ! printf '%s\n' "${output}" | grep -q "E404"; then
             printf '%s\n' "${output}" >&2
             exit "${status}"
           fi
+          echo "published=false" >> "${GITHUB_OUTPUT}"
 
       - name: Check
         run: pnpm run check
 
       - name: Publish with npm trusted publishing
+        if: steps.npm-version.outputs.published != 'true'
         run: npm publish --access public --provenance
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: publish
+    permissions:
+      contents: write
+    steps:
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release view "${RELEASE_TAG}" >/dev/null 2>&1 || gh release create "${RELEASE_TAG}" --verify-tag --title "${RELEASE_TAG}" --generate-notes
