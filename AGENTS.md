@@ -132,6 +132,9 @@ examples change. Update `CHANGELOG.md` for release-facing changes. Never commit
 - Do not post credentials, private paths, private hosts, or sensitive logs.
 - Do not push, publish, create releases, or post public GitHub comments unless
   explicitly asked.
+- Releases are tag-driven from `main` through `.github/workflows/release.yml`.
+- After the one-time registry bootstrap package, never publish locally or add
+  long-lived npm tokens to repository settings.
 
 ## Map
 
@@ -139,3 +142,4 @@ examples change. Update `CHANGELOG.md` for release-facing changes. Never commit
 - `test/`: public behavior tests.
 - `scripts/`: package validation scripts.
 - `.github/`: workflows, issue templates, and PR template.
+- `.agents/skills/autoreview/`: structured review closeout helper.
