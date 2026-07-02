@@ -47,12 +47,6 @@ Route matching, navigation results, loader cancellation, stale-result handling,
 subscriptions, exported types, and package output are public compatibility
 surfaces. Prefer additive changes and call out any deliberate break explicitly.
 
-For non-trivial changes, run the repository autoreview helper before handoff:
-
-```bash
-.agents/skills/autoreview/scripts/autoreview
-```
-
 ## Reporting Bugs
 
 Use the bug report template and include:
