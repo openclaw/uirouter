@@ -1,6 +1,5 @@
 # Protect repository governance and automation.
 /.github/ @openclaw/openclaw-secops
-/.agents/skills/ @openclaw/openclaw-secops
 /AGENTS.md @openclaw/openclaw-secops
 /CLAUDE.md @openclaw/openclaw-secops
 /CONTRIBUTING.md @openclaw/openclaw-secops
