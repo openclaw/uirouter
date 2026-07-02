@@ -142,4 +142,3 @@ examples change. Update `CHANGELOG.md` for release-facing changes. Never commit
 - `test/`: public behavior tests.
 - `scripts/`: package validation scripts.
 - `.github/`: workflows, issue templates, and PR template.
-- `.agents/skills/autoreview/`: structured review closeout helper.

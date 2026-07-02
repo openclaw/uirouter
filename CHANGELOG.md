@@ -39,5 +39,4 @@ Initial standalone release of `@openclaw/uirouter`.
   Windows.
 - Added CodeQL scanning for JavaScript/TypeScript and GitHub Actions workflows.
 - Added tag-driven npm trusted-publishing release automation, stale triage,
-  CODEOWNERS, SECURITY.md, CONTRIBUTING.md, and the repository autoreview
-  helper.
+  CODEOWNERS, SECURITY.md, and CONTRIBUTING.md.
