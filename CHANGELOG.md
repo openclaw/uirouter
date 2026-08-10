@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+### Fixed
+
+- Cancel pending navigation when returning to the active route so stale loaders cannot win later.
+
 ## 0.1.0
 
 Initial standalone release of `@openclaw/uirouter`.

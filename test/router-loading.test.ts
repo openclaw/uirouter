@@ -129,6 +129,76 @@ describe("router loading", () => {
     });
   });
 
+  it("cancels a pending navigation when returning to the active match", async () => {
+    const slowData = deferred<TestData>();
+    const slowModule = deferred<TestModule>();
+    const fastLoader = vi.fn((context: TestContext) => ({
+      label: context.label,
+      route: "fast" as const,
+    }));
+    const lifecycle: string[] = [];
+    let slowSignal: AbortSignal | undefined;
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      routes: [
+        definePage<"slow", TestContext, TestModule, TestData>({
+          id: "slow",
+          path: "/slow",
+          component: () => slowModule.promise,
+          loader: (_context, options) => {
+            slowSignal = options.signal;
+            return slowData.promise;
+          },
+          onEnter: () => {
+            lifecycle.push("enter:slow");
+          },
+        }),
+        definePage<"fast", TestContext, TestModule, TestData>({
+          id: "fast",
+          path: "/fast",
+          component: () => ({ view: "fast" }),
+          loader: fastLoader,
+          onEnter: () => {
+            lifecycle.push("enter:fast");
+          },
+          onLeave: () => {
+            lifecycle.push("leave:fast");
+          },
+        }),
+      ],
+    });
+
+    await router.navigate("fast", { label: "active" });
+    const active = router.getState().matches[0];
+    const slowNavigation = router.navigate("slow", { label: "stale" });
+    await waitFor(() => slowSignal !== undefined);
+    const published = [] as ReturnType<typeof router.getState>[];
+    router.subscribe((state) => published.push(state));
+
+    const latest = location("/fast", "?latest=1", "#kept");
+    await router.navigate("fast", { label: "latest" }, undefined, latest);
+
+    const state = router.getState();
+    expect(slowSignal?.aborted).toBe(true);
+    expect(state).toMatchObject({
+      status: "success",
+      location: latest,
+      resolvedLocation: latest,
+      pendingMatches: [],
+    });
+    expect(state.matches[0]).toMatchObject({ routeId: "fast", location: latest });
+    expect(state.matches[0]?.data).toBe(active?.data);
+    expect(state.matches[0]?.module).toBe(active?.module);
+    expect(fastLoader).toHaveBeenCalledOnce();
+    expect(lifecycle).toEqual(["enter:fast"]);
+    expect(published.every((snapshot) => snapshot.pendingMatches.length === 0)).toBe(true);
+
+    slowData.resolve({ label: "stale", route: "slow" });
+    slowModule.resolve({ view: "slow" });
+    await slowNavigation;
+    expect(router.getState()).toEqual(state);
+    expect(lifecycle).toEqual(["enter:fast"]);
+  });
+
   it("keeps stale active content visible during background reload", async () => {
     const reloadData = deferred<TestData>();
     let loadCount = 0;

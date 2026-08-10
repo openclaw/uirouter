@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/uirouter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Small route matching, loading, and navigation state router for OpenClaw UI surfaces.",
   "keywords": [
     "openclaw",

@@ -170,9 +170,14 @@ export function createRouter<
     }
 
     if (sameMatch && previous?.status === "success" && !previous.invalid && !revalidating) {
-      matches.updateMatch(previous.id, (current) => ({ ...current, location }));
-      matches.setLocation(location, location);
-      matches.setStatus("success");
+      cancelRun(currentRun);
+      currentRun = null;
+      matches.batch(() => {
+        matches.updateMatch(previous.id, (current) => ({ ...current, location }));
+        matches.setPending([]);
+        matches.setLocation(location, location);
+        matches.setStatus("success");
+      });
       return;
     }
 
