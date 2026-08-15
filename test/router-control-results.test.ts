@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createRouter, definePage, notFound, redirect, type RouteLocation } from "../src/index";
 
-type RouteId = "source" | "target" | "missing";
+type RouteId = "source" | "target" | "missing" | "alpha" | "beta" | "gamma";
 type TestContext = {
   label: string;
 };
@@ -48,6 +48,150 @@ describe("router control results", () => {
       data: { label: "redirected" },
       module: { view: "target" },
     });
+  });
+
+  it("follows a loader redirect chain under the hop cap", async () => {
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      routes: [
+        definePage<"alpha", TestContext, TestModule, TestData>({
+          id: "alpha",
+          path: "/alpha",
+          component: () => ({ view: "alpha" }),
+          loader: () => redirect(location("/beta")),
+        }),
+        definePage<"beta", TestContext, TestModule, TestData>({
+          id: "beta",
+          path: "/beta",
+          component: () => ({ view: "beta" }),
+          loader: () => redirect(location("/gamma")),
+        }),
+        definePage<"gamma", TestContext, TestModule, TestData>({
+          id: "gamma",
+          path: "/gamma",
+          component: () => ({ view: "gamma" }),
+          loader: (context) => ({ label: context.label }),
+        }),
+      ],
+    });
+
+    await router.navigate("alpha", { label: "chained" });
+
+    const state = router.getState();
+    const [match] = state.matches;
+    expect(state.status).toBe("success");
+    expect(state.location).toEqual(location("/gamma"));
+    expect(match).toMatchObject({
+      routeId: "gamma",
+      status: "success",
+      data: { label: "chained" },
+      module: { view: "gamma" },
+    });
+  });
+
+  it("rejects a loader redirect cycle during navigation", async () => {
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      routes: [
+        definePage<"alpha", TestContext, TestModule, TestData>({
+          id: "alpha",
+          path: "/alpha",
+          component: () => ({ view: "alpha" }),
+          loader: () => redirect(location("/beta")),
+        }),
+        definePage<"beta", TestContext, TestModule, TestData>({
+          id: "beta",
+          path: "/beta",
+          component: () => ({ view: "beta" }),
+          loader: () => redirect(location("/alpha")),
+        }),
+      ],
+    });
+
+    await expect(router.navigate("alpha", { label: "loop" })).rejects.toThrow(
+      /Redirect cycle detected: \/alpha -> \/beta -> \/alpha/,
+    );
+    expect(router.getState().status).toBe("error");
+  });
+
+  it("rejects navigation after the redirect hop limit", async () => {
+    const hopCount = 11;
+    const ids = Array.from({ length: hopCount + 1 }, (_, index) => `hop${index}`);
+    const router = createRouter<string, TestContext, TestModule, TestData>({
+      routes: ids.map((id, index) =>
+        definePage<string, TestContext, TestModule, TestData>({
+          id,
+          path: `/${id}`,
+          component: () => ({ view: id }),
+          loader:
+            index < hopCount
+              ? () => redirect(location(`/${ids[index + 1]}`))
+              : (context) => ({ label: context.label }),
+        }),
+      ),
+    });
+
+    await expect(router.navigate("hop0", { label: "over" })).rejects.toThrow(
+      /Redirect hop limit of 10 exceeded while following \/hop10 -> \/hop11/,
+    );
+    expect(router.getState().status).toBe("error");
+  });
+
+  it("follows a preload redirect chain under the hop cap", async () => {
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      routes: [
+        definePage<"alpha", TestContext, TestModule, TestData>({
+          id: "alpha",
+          path: "/alpha",
+          component: () => ({ view: "alpha" }),
+          loader: () => redirect(location("/beta")),
+        }),
+        definePage<"beta", TestContext, TestModule, TestData>({
+          id: "beta",
+          path: "/beta",
+          component: () => ({ view: "beta" }),
+          loader: () => redirect(location("/gamma")),
+        }),
+        definePage<"gamma", TestContext, TestModule, TestData>({
+          id: "gamma",
+          path: "/gamma",
+          component: () => ({ view: "gamma" }),
+          loader: (context) => ({ label: context.label }),
+        }),
+      ],
+    });
+
+    await router.preloadRoute("alpha", { label: "preloaded" });
+
+    const cached = router.getState().cachedMatches;
+    expect(cached).toHaveLength(1);
+    expect(cached[0]).toMatchObject({
+      routeId: "gamma",
+      status: "success",
+      preload: true,
+      data: { label: "preloaded" },
+    });
+  });
+
+  it("rejects a loader redirect cycle during preload", async () => {
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      routes: [
+        definePage<"alpha", TestContext, TestModule, TestData>({
+          id: "alpha",
+          path: "/alpha",
+          component: () => ({ view: "alpha" }),
+          loader: () => redirect(location("/beta")),
+        }),
+        definePage<"beta", TestContext, TestModule, TestData>({
+          id: "beta",
+          path: "/beta",
+          component: () => ({ view: "beta" }),
+          loader: () => redirect(location("/alpha")),
+        }),
+      ],
+    });
+
+    await expect(router.preloadRoute("alpha", { label: "loop" })).rejects.toThrow(
+      /Redirect cycle detected: \/alpha -> \/beta -> \/alpha/,
+    );
   });
 
   it("publishes not-found route state from loaders", async () => {
