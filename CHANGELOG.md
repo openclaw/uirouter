@@ -5,6 +5,7 @@
 ### CI
 
 - Refresh development dependencies, pnpm, and pinned GitHub Actions without changing the router API or runtime requirements.
+- Pass the repository explicitly to the GitHub Release job so it works without a local checkout.
 
 ## 0.1.1
 
