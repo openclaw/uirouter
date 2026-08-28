@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### CI
+
+- Refresh development dependencies, pnpm, and pinned GitHub Actions without changing the router API or runtime requirements.
+
 ## 0.1.1
 
 ### Fixed
