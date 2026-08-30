@@ -21,6 +21,14 @@ type Deferred<T> = {
   reject: (error: unknown) => void;
 };
 
+const MAX_TIMER_DELAY = 2 ** 31 - 1;
+
+function overflowTimeoutDelays(spy: { mock: { calls: unknown[][] } }): number[] {
+  return spy.mock.calls
+    .map((call) => Number(call[1]))
+    .filter((delay) => !Number.isFinite(delay) || delay > MAX_TIMER_DELAY);
+}
+
 function ignoreResolve(_value: unknown): void {}
 
 function ignoreReject(_error: unknown): void {}
@@ -390,6 +398,123 @@ describe("router loading", () => {
     await vi.advanceTimersByTimeAsync(11);
 
     expect(router.getState().cachedMatches).toEqual([]);
+  });
+
+  it("does not schedule a GC timer when gcTime is Infinity", async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      gcTime: Infinity,
+      routes: [
+        definePage<"chat", TestContext, TestModule, TestData>({
+          id: "chat",
+          path: "/chat",
+          component: () => ({ view: "chat" }),
+          loader: (context) => ({ label: context.label, route: "chat" }),
+        }),
+        definePage<"fast", TestContext, TestModule, TestData>({
+          id: "fast",
+          path: "/fast",
+          component: () => ({ view: "fast" }),
+          loader: (context) => ({ label: context.label, route: "fast" }),
+        }),
+      ],
+    });
+
+    try {
+      await router.navigate("chat", { label: "cached" });
+      await router.navigate("fast", { label: "active" });
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      expect(overflowTimeoutDelays(setTimeoutSpy)).toEqual([]);
+
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 20));
+
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      expect(router.getState().cachedMatches[0]).toMatchObject({
+        routeId: "chat",
+        status: "success",
+        data: { label: "cached", route: "chat" },
+      });
+      expect(overflowTimeoutDelays(setTimeoutSpy)).toEqual([]);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it("does not schedule a GC timer when preloadGcTime is Infinity", async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      preloadGcTime: Infinity,
+      routes: [
+        definePage<"chat", TestContext, TestModule, TestData>({
+          id: "chat",
+          path: "/chat",
+          component: () => ({ view: "chat" }),
+          loader: (context) => ({ label: context.label, route: "chat" }),
+        }),
+      ],
+    });
+
+    try {
+      await router.preloadRoute("chat", { label: "preloaded" });
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      expect(overflowTimeoutDelays(setTimeoutSpy)).toEqual([]);
+
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 20));
+
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      expect(router.getState().cachedMatches[0]).toMatchObject({
+        routeId: "chat",
+        status: "success",
+        preload: true,
+        data: { label: "preloaded", route: "chat" },
+      });
+      expect(overflowTimeoutDelays(setTimeoutSpy)).toEqual([]);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it("does not pass an overflowing delay when gcTime exceeds the timer limit", async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      gcTime: 30 * 24 * 60 * 60 * 1000,
+      routes: [
+        definePage<"chat", TestContext, TestModule, TestData>({
+          id: "chat",
+          path: "/chat",
+          component: () => ({ view: "chat" }),
+          loader: (context) => ({ label: context.label, route: "chat" }),
+        }),
+        definePage<"fast", TestContext, TestModule, TestData>({
+          id: "fast",
+          path: "/fast",
+          component: () => ({ view: "fast" }),
+          loader: (context) => ({ label: context.label, route: "fast" }),
+        }),
+      ],
+    });
+
+    try {
+      await router.navigate("chat", { label: "cached" });
+      await router.navigate("fast", { label: "active" });
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      expect(overflowTimeoutDelays(setTimeoutSpy)).toEqual([]);
+      expect(setTimeoutSpy.mock.calls.some((call) => Number(call[1]) === MAX_TIMER_DELAY)).toBe(
+        true,
+      );
+
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 20));
+
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      expect(router.getState().cachedMatches[0]).toMatchObject({
+        routeId: "chat",
+        status: "success",
+        data: { label: "cached", route: "chat" },
+      });
+      expect(overflowTimeoutDelays(setTimeoutSpy)).toEqual([]);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
   });
 
   it("aborts in-flight work and clears route state on stop", async () => {

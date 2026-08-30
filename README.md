@@ -125,7 +125,7 @@ Per-route cache knobs (all optional, all in milliseconds):
 | `gcTime`           | `30 min`     | How long an unused cached match is kept.                            |
 | `preloadGcTime`    | `30 min`     | GC for preloaded matches.                                           |
 
-The same defaults can be set router-wide via `createRouter({ staleTime, defaultStaleReloadMode, preloadStaleTime, preloadGcTime, gcTime })`.
+The same defaults can be set router-wide via `createRouter({ staleTime, defaultStaleReloadMode, preloadStaleTime, preloadGcTime, gcTime })`. Pass `Infinity` to keep a cached match until it is replaced or `stop()` runs. Values larger than `2^31-1` ms are clamped so they do not overflow the host timer.
 
 ## Redirects and not-found
 
