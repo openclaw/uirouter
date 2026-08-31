@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Keep unused cached and preloaded matches when `gcTime` or `preloadGcTime` is `Infinity` or larger than the host timer limit (`2^31-1` ms). Those values no longer overflow `setTimeout` into a 1ms timer.
+
 ### CI
 
 - Refresh development dependencies, pnpm, and pinned GitHub Actions without changing the router API or runtime requirements.

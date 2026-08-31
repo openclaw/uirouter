@@ -65,6 +65,9 @@ function now(): number {
   return Date.now();
 }
 
+// Host timers coerce delays outside signed 32-bit to 1ms.
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
 export function createRouteLoading<TRouteId extends string, TLoadContext, TModule, TData>(
   options: RouteLoadingOptions,
   matchStore: MatchStore<TRouteId, TModule, TData>,
@@ -97,6 +100,9 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     const gcTime = match.preload
       ? (route.preloadGcTime ?? options.preloadGcTime)
       : (route.gcTime ?? options.gcTime);
+    if (!Number.isFinite(gcTime)) {
+      return;
+    }
     const remaining = gcTime - (now() - match.updatedAt);
     if (!matchStore.getCachedMatch(match.id) || remaining <= 0) {
       if (remaining <= 0) {
@@ -109,6 +115,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     if (previousTimer) {
       globalThis.clearTimeout(previousTimer);
     }
+    const delay = remaining > MAX_TIMEOUT_MS ? MAX_TIMEOUT_MS : remaining;
     const timer = globalThis.setTimeout(() => {
       const current = matchStore.getCachedMatch(match.id);
       if (!current) {
@@ -121,7 +128,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       }
       matchStore.removeCached(match.id);
       gcTimers.delete(match.id);
-    }, remaining);
+    }, delay);
     gcTimers.set(match.id, timer);
     (timer as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
   };
