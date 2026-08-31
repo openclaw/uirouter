@@ -167,4 +167,17 @@ describe("router history", () => {
     expect(state.location).toEqual(location("/settings", "?tab=tools"));
     expect(state.matches[0]?.routeId).toBe("settings");
   });
+
+  it("loads history navigations with the latest context, not the start context", async () => {
+    const router = createTestRouter();
+    const history = createMemoryHistory(location("/chat"));
+
+    await router.start(history, "", { label: "u_1" });
+    await router.navigate("chat", { label: "u_2" });
+    history.emit(location("/settings"));
+    await waitFor(() => router.getState().matches[0]?.routeId === "settings");
+
+    expect(router.getState().status).toBe("success");
+    expect(router.getState().matches[0]?.data).toEqual({ label: "u_2", route: "settings" });
+  });
 });

@@ -549,7 +549,8 @@ export function createRouter<
       basePath = normalizeRouteBasePath(nextBasePath);
       stopHistory?.();
       stopHistory = history.listen((location) => {
-        void handleLocation(location, context).catch(() => undefined);
+        const nextContext = lastContext.hasContext ? lastContext.value : context;
+        void handleLocation(location, nextContext).catch(() => undefined);
       });
       return handleLocation(history.location(), context, true);
     },

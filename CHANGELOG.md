@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Use the latest navigation context when history reports a location change, instead of the context originally passed to `start()`.
+
 ### CI
 
 - Refresh development dependencies, pnpm, and pinned GitHub Actions without changing the router API or runtime requirements.
