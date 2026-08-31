@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Cap loader redirect follows at 10 hops and reject cycles so A to B to A
+  cannot hang navigation or preload.
+
 ### CI
 
 - Refresh development dependencies, pnpm, and pinned GitHub Actions without changing the router API or runtime requirements.
