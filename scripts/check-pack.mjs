@@ -57,8 +57,9 @@ try {
     cwd: process.cwd(),
     encoding: "utf8",
   });
+  // npm 12 keys results by package name; earlier npm versions return an array.
   /** @type {Array<{ filename: string; files: Array<{ path: string }> }>} */
-  const pack = JSON.parse(output);
+  const pack = Object.values(JSON.parse(output));
   const [{ filename, files }] = pack;
   const paths = files.map((file) => file.path).toSorted();
   const expected = expectedPackageFiles.toSorted();
