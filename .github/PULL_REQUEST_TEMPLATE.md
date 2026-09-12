@@ -3,35 +3,35 @@
 <!--
 Describe the concrete problem this PR addresses for consumers of
 `@openclaw/uirouter` (apps, integrators, or downstream OpenClaw surfaces).
-For fixes, begin with:
-"Fixes an issue where consumers <do X> would <experience Y> when <condition>."
-or:
-"Resolves a problem where..."
+Use one short, plain-language sentence. For fixes, prefer:
+"Fixes: <what goes wrong> when <trigger or condition>."
+For other changes, describe the need without inventing a bug.
 
 Name the affected router surface (route matching, navigation, loader lifecycle,
 caching, subscriptions, history adapter, exports, types). Do not describe the
 code-level cause here.
 -->
 
-## Why This Change Was Made
-
-<!--
-In one or two sentences, explain the complete shipped solution, key design
-decisions, and relevant boundaries or non-goals. Call out anything that affects
-the router contract: public exports, types, history adapter shape, loader
-cancellation, stale/revalidation semantics, caching, lifecycle hooks, or
-supported runtimes. Avoid file-by-file narration.
--->
-
 ## User Impact
 
 <!--
-State what consumers of `@openclaw/uirouter` can now do or expect. Lead with
-the concrete benefit and use user-facing language.
+"User impact: <what router consumers can now do or expect>."
+Lead with the concrete outcome in plain language, usually one sentence.
+For internal-only changes, say there is no user-visible change; do not invent a benefit.
+Keep important risks, breaking changes, migrations, and required user actions visible here.
+Mention changes to public exports, types, history adapters, loader cancellation,
+cache or revalidation behavior, lifecycle hooks, and runtime support only when
+relevant. For breaking changes, describe the migration and update `CHANGELOG.md`.
+For internal layout, tooling, tests, or docs that ship nothing new in `dist/`, say so.
+-->
 
-If this is a breaking change, describe what breaks and the migration path, and
-make sure `CHANGELOG.md` is updated. If this only affects internal layout,
-tooling, tests, or docs and ships nothing new in `dist/`, say so plainly.
+## Why This Change Was Made
+
+<!--
+Briefly explain how the change addresses the problem without repeating the impact.
+Keep the body short. Leave file lists, internal acronyms, and root-cause walkthroughs
+in the diff or optional <details>; include technical detail only when it explains
+behavior or a material tradeoff. Do not hide risks or required actions in <details>.
 -->
 
 ## Evidence
@@ -48,6 +48,8 @@ Show the most useful proof that this change works. Useful evidence includes:
 
 Reviewers will inspect the code, tests, and CI. Use this section to make the
 validation easy to understand, not to restate the diff.
+Summarize what was checked and the result; note meaningful gaps. Link long output
+or put it in optional <details>, keeping the useful evidence summary visible.
 -->
 
 <!--
