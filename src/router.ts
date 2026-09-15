@@ -41,6 +41,38 @@ const DEFAULT_STALE_TIME = 0;
 const DEFAULT_STALE_RELOAD_MODE = "background" as const;
 const DEFAULT_PRELOAD_STALE_TIME = 30_000;
 const DEFAULT_GC_TIME = 30 * 60_000;
+const MAX_REDIRECT_HOPS = 10;
+
+type RedirectFollowState = {
+  hops: number;
+  seen: Set<string>;
+};
+
+function locationKey(location: RouteLocation): string {
+  const normalized = normalizeLocation(location);
+  return `${normalized.pathname}${normalized.search}${normalized.hash}`;
+}
+
+function beginRedirectFollow(
+  from: RouteLocation,
+  to: RouteLocation,
+  previous?: RedirectFollowState,
+): RedirectFollowState {
+  const hops = (previous?.hops ?? 0) + 1;
+  const seen = previous?.seen ?? new Set<string>();
+  const fromKey = locationKey(from);
+  const toKey = locationKey(to);
+  seen.add(fromKey);
+  if (hops > MAX_REDIRECT_HOPS) {
+    throw new Error(
+      `Redirect hop limit of ${MAX_REDIRECT_HOPS} exceeded while following ${fromKey} -> ${toKey}.`,
+    );
+  }
+  if (seen.has(toKey)) {
+    throw new Error(`Redirect cycle detected: ${[...seen, toKey].join(" -> ")}.`);
+  }
+  return { hops, seen };
+}
 
 function isCurrentRun(current: NavigationRun | null, run: NavigationRun): boolean {
   return current === run && !run.controller.signal.aborted;
@@ -134,6 +166,7 @@ export function createRouter<
     context: TLoadContext,
     navigationOptions: RouterNavigationOptions = {},
     requestedLocation = locationForPath(compiled.pathForRoute(routeId, basePath)),
+    redirectFollow?: RedirectFollowState,
   ): Promise<void> => {
     const route = compiled.byId.get(routeId);
     if (!route) {
@@ -305,22 +338,31 @@ export function createRouter<
         if (!hookOptions.shouldRun()) {
           return;
         }
+        let failure = error;
         if (isRouteRedirect(error)) {
-          matches.updateMatch(match.id, (current) => ({
-            ...current,
-            status: "redirected",
-            isFetching: false,
-            error,
-            updatedAt: Date.now(),
-          }));
-          matches.setStatus("redirected");
-          currentRun = null;
-          if (hookOptions.cause !== "preload") {
-            await handleLocation(error.location, context, false, "replace");
+          let follow: RedirectFollowState | undefined;
+          try {
+            follow = beginRedirectFollow(location, error.location, redirectFollow);
+          } catch (redirectError) {
+            failure = redirectError;
           }
-          return;
+          if (follow) {
+            matches.updateMatch(match.id, (current) => ({
+              ...current,
+              status: "redirected",
+              isFetching: false,
+              error,
+              updatedAt: Date.now(),
+            }));
+            matches.setStatus("redirected");
+            currentRun = null;
+            if (hookOptions.cause !== "preload") {
+              await handleLocation(error.location, context, false, "replace", follow);
+            }
+            return;
+          }
         }
-        const status = isRouteNotFound(error) ? "notFound" : "error";
+        const status = isRouteNotFound(failure) ? "notFound" : "error";
         const failedMatch = matches.getMatch(match.id);
         if (failedMatch) {
           const currentActive = targetPublished ? previous : matches.getActiveMatch();
@@ -336,7 +378,7 @@ export function createRouter<
               ...current,
               status,
               isFetching: false,
-              error,
+              error: failure,
               updatedAt: Date.now(),
             }));
             if (!targetPublished) {
@@ -352,7 +394,7 @@ export function createRouter<
         if (isCurrentRun(currentRun, run)) {
           currentRun = null;
         }
-        throw error;
+        throw failure;
       }
       if (!hookOptions.shouldRun()) {
         return;
@@ -432,6 +474,7 @@ export function createRouter<
     context: TLoadContext,
     revalidate = false,
     historyMode: RouterNavigationOptions["history"] = "none",
+    redirectFollow?: RedirectFollowState,
   ): Promise<void> => {
     const normalized = normalizeLocation(location);
     const matched = compiled.routeIdFromPath(normalized.pathname, basePath);
@@ -446,13 +489,20 @@ export function createRouter<
       });
       return;
     }
-    await navigate(matched, context, { history: historyMode, revalidate }, normalized);
+    await navigate(
+      matched,
+      context,
+      { history: historyMode, revalidate },
+      normalized,
+      redirectFollow,
+    );
   };
 
   const preloadAtLocation = (
     routeId: TRouteId,
     context: TLoadContext,
     location: RouteLocation,
+    redirectFollow?: RedirectFollowState,
   ): Promise<void> => {
     const route = compiled.byId.get(routeId);
     if (!route) {
@@ -499,7 +549,8 @@ export function createRouter<
       .catch((error: unknown) => {
         if (isRouteRedirect(error)) {
           matches.removeCached(match.id);
-          return preloadLocation(error.location, context);
+          const follow = beginRedirectFollow(location, error.location, redirectFollow);
+          return preloadLocation(error.location, context, follow);
         }
         matches.removeCached(match.id);
         return undefined;
@@ -509,10 +560,16 @@ export function createRouter<
   const preloadRoute = (routeId: TRouteId, context: TLoadContext): Promise<void> =>
     preloadAtLocation(routeId, context, locationForPath(compiled.pathForRoute(routeId, basePath)));
 
-  const preloadLocation = (location: RouteLocation, context: TLoadContext): Promise<void> => {
+  const preloadLocation = (
+    location: RouteLocation,
+    context: TLoadContext,
+    redirectFollow?: RedirectFollowState,
+  ): Promise<void> => {
     const normalized = normalizeLocation(location);
     const routeId = compiled.routeIdFromPath(normalized.pathname, basePath);
-    return routeId ? preloadAtLocation(routeId, context, normalized) : Promise.resolve();
+    return routeId
+      ? preloadAtLocation(routeId, context, normalized, redirectFollow)
+      : Promise.resolve();
   };
 
   return {
