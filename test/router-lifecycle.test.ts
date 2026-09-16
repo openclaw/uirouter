@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createRouter, definePage } from "../src/index";
 
+function ignoreError(_error: Error): void {}
+
+function ignoreEnter(): void {}
+
 type RouteId = "chat" | "settings";
 type TestContext = {
   label: string;
@@ -14,6 +18,57 @@ type TestData = {
 };
 
 describe("router lifecycle", () => {
+  it.each(["navigate", "stop", "current"] as const)(
+    "only publishes an asynchronous hook error while its navigation is current (%s)",
+    async (action) => {
+      const failure = new Error("hook failed");
+      let rejectHook: (error: Error) => void = ignoreError;
+      let entered: () => void = ignoreEnter;
+      const started = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const hook = new Promise<void>((_resolve, reject) => {
+        rejectHook = reject;
+      });
+      const router = createRouter({
+        routes: [
+          {
+            id: "chat",
+            path: "/chat",
+            component: () => "chat",
+            onEnter: () => {
+              entered();
+              return hook;
+            },
+          },
+          { id: "settings", path: "/settings", component: () => "settings" },
+        ],
+      });
+
+      const navigation = router.navigate("chat", undefined);
+      await started;
+      if (action === "navigate") {
+        await router.navigate("settings", undefined);
+      } else if (action === "stop") {
+        router.stop();
+      }
+      const before = router.getState();
+      rejectHook(failure);
+
+      if (action === "current") {
+        await expect(navigation).rejects.toBe(failure);
+        expect(router.getState()).toMatchObject({
+          status: "error",
+          matches: [{ status: "error", error: failure }],
+        });
+      } else {
+        await navigation;
+        expect(router.getState()).toEqual(before);
+      }
+      router.stop();
+    },
+  );
+
   it("runs enter and leave hooks in route-transition order", async () => {
     const events: string[] = [];
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({
