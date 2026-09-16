@@ -402,6 +402,9 @@ export function createRouter<
           lifecycleErrors.push(error);
         }
       }
+      if (!hookOptions.shouldRun()) {
+        return;
+      }
       if (lifecycleErrors.length > 0) {
         const error = lifecycleErrors[0];
         matches.updateMatch(resolvedMatch.id, (current) => ({

@@ -221,7 +221,9 @@ definePage({
 ```
 
 If a hook throws, the match transitions to `"error"` and the error propagates
-out of the originating `navigate` call.
+out of the originating `navigate` call while that navigation is current.
+Errors from hooks that finish after another navigation or `stop()` are ignored,
+just like obsolete loader results.
 
 ## API reference
 
