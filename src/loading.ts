@@ -138,7 +138,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     (timer as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
   };
 
-  const loadModule = (
+  const loadModule = async (
     route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
     match: RouteMatch<TRouteId, TModule, TData>,
   ): Promise<TModule> => {
@@ -155,7 +155,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     return loaded;
   };
 
-  const loadData = (
+  const loadData = async (
     match: RouteMatch<TRouteId, TModule, TData>,
     route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
     context: TLoadContext,

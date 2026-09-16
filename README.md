@@ -106,6 +106,10 @@ context and location. Two navigations that produce the same `(routeId, deps)`
 share a match, so dependency-driven re-fetching is just a matter of returning
 a different deps string.
 
+Components and data load in parallel. Synchronous throws and rejected promises
+both follow the router's error path; a failure in one task does not leave the
+other task's rejection unhandled. Revalidation can retry a failed route.
+
 ```ts
 definePage({
   id: "thread",

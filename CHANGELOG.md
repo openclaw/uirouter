@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Contain synchronous component and loader exceptions so parallel load failures cannot escape as unhandled rejections or prevent component loading.
 - Ignore late lifecycle-hook failures after navigation is superseded or the router stops, preserving the current route state.
 - Prevent infinite or oversized cache retention from overflowing host timers, preserving finite expiry and clearing obsolete preload timers. Thanks @SebTardif.
 - Use the latest navigation context for history changes and establish new context before listening when restarting history. Thanks @SebTardif.
