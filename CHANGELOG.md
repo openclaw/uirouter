@@ -5,6 +5,7 @@
 ### Fixed
 
 - Prevent infinite or oversized cache retention from overflowing host timers, preserving finite expiry and clearing obsolete preload timers. Thanks @SebTardif.
+- Use the latest navigation context for history changes and establish new context before listening when restarting history. Thanks @SebTardif.
 
 ### CI
 

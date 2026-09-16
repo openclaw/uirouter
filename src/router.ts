@@ -433,6 +433,7 @@ export function createRouter<
     revalidate = false,
     historyMode: RouterNavigationOptions["history"] = "none",
   ): Promise<void> => {
+    lastContext = { hasContext: true, value: context };
     const normalized = normalizeLocation(location);
     const matched = compiled.routeIdFromPath(normalized.pathname, basePath);
     if (!matched) {
@@ -510,6 +511,7 @@ export function createRouter<
     preloadAtLocation(routeId, context, locationForPath(compiled.pathForRoute(routeId, basePath)));
 
   const preloadLocation = (location: RouteLocation, context: TLoadContext): Promise<void> => {
+    lastContext = { hasContext: true, value: context };
     const normalized = normalizeLocation(location);
     const routeId = compiled.routeIdFromPath(normalized.pathname, basePath);
     return routeId ? preloadAtLocation(routeId, context, normalized) : Promise.resolve();
@@ -548,27 +550,17 @@ export function createRouter<
       history = nextHistory;
       basePath = normalizeRouteBasePath(nextBasePath);
       stopHistory?.();
+      lastContext = { hasContext: true, value: context };
       stopHistory = history.listen((location) => {
-        void handleLocation(location, context).catch(() => undefined);
+        if (lastContext.hasContext) {
+          void handleLocation(location, lastContext.value).catch(() => undefined);
+        }
       });
       return handleLocation(history.location(), context, true);
     },
     navigate,
     navigateLocation(location: RouteLocation, context: TLoadContext): Promise<void> {
-      const normalized = normalizeLocation(location);
-      const matched = compiled.routeIdFromPath(normalized.pathname, basePath);
-      if (!matched) {
-        cancelRun(currentRun);
-        currentRun = null;
-        matches.batch(() => {
-          matches.setActive([]);
-          matches.setPending([]);
-          matches.setLocation(normalized, null);
-          matches.setStatus("notFound");
-        });
-        return Promise.resolve();
-      }
-      return navigate(matched, context, { history: "none" }, normalized);
+      return handleLocation(location, context);
     },
     revalidate(context: TLoadContext, routeId = matches.getActiveMatch()?.routeId): Promise<void> {
       if (!routeId) {

@@ -89,6 +89,12 @@ await router.start(browserHistory, "/app", { userId: "u_1" });
 `start` matches the current location, runs its loader, and subscribes to
 history changes. Call `router.stop()` to detach and clear caches.
 
+Each `start` establishes its supplied context before subscribing, including
+adapters that replay the location synchronously. Later history changes use the
+latest context stored by navigation or preloading. Cache identity still depends
+on `loaderDeps`; include session-dependent values there when data varies by session.
+Location-based calls store their context even when no route matches the URL.
+
 For programmatic navigation, use `navigate(routeId, context, options)` or
 `navigateLocation(location, context)`. Pass `{ history: "push" | "replace" }`
 to have the router update the underlying history.

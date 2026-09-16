@@ -167,4 +167,63 @@ describe("router history", () => {
     expect(state.location).toEqual(location("/settings", "?tab=tools"));
     expect(state.matches[0]?.routeId).toBe("settings");
   });
+
+  it("loads history navigations with the latest context, not the start context", async () => {
+    const router = createTestRouter();
+    const history = createMemoryHistory(location("/chat"));
+
+    await router.start(history, "", { label: "u_1" });
+    await router.navigate("chat", { label: "u_2" });
+    history.emit(location("/settings"));
+    await waitFor(() => router.getState().matches[0]?.routeId === "settings");
+
+    expect(router.getState().status).toBe("success");
+    expect(router.getState().matches[0]?.data).toEqual({ label: "u_2", route: "settings" });
+  });
+
+  it("uses the new start context during synchronous history replay", async () => {
+    const router = createTestRouter();
+    await router.navigate("chat", { label: "old" });
+    const history = createMemoryHistory(location("/settings"));
+    const listen = history.listen;
+    history.listen = (listener) => {
+      const unsubscribe = listen(listener);
+      listener(history.location());
+      return unsubscribe;
+    };
+
+    await router.start(history, "", { label: "restarted" });
+
+    expect(router.getState().matches[0]?.data).toEqual({ label: "restarted", route: "settings" });
+    router.stop();
+  });
+
+  it("stores a new start context even when the initial location is unmatched", async () => {
+    const router = createTestRouter();
+    await router.navigate("chat", { label: "old" });
+    const history = createMemoryHistory(location("/missing"));
+    await router.start(history, "", { label: "restarted" });
+
+    history.emit(location("/settings"));
+    await waitFor(() => router.getState().status === "success");
+
+    expect(router.getState().matches[0]?.data).toEqual({ label: "restarted", route: "settings" });
+    router.stop();
+  });
+
+  it.each(["navigateLocation", "preloadLocation"] as const)(
+    "stores context from an unmatched %s call for later history events",
+    async (method) => {
+      const router = createTestRouter();
+      const history = createMemoryHistory(location("/chat"));
+      await router.start(history, "", { label: "old" });
+
+      await router[method](location("/missing"), { label: "current" });
+      history.emit(location("/settings"));
+      await waitFor(() => router.getState().status === "success");
+
+      expect(router.getState().matches[0]?.data).toEqual({ label: "current", route: "settings" });
+      router.stop();
+    },
+  );
 });
