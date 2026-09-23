@@ -501,11 +501,13 @@ export function createRouter<
       .loadRoute(match, route, context, hookOptions, false)
       .then(() => undefined)
       .catch((error: unknown) => {
-        if (isRouteRedirect(error)) {
-          matches.removeCached(match.id);
-          return preloadLocation(error.location, context);
+        if (!hookOptions.shouldRun()) {
+          return undefined;
         }
         matches.removeCached(match.id);
+        if (isRouteRedirect(error)) {
+          return preloadLocation(error.location, context);
+        }
         return undefined;
       });
   };

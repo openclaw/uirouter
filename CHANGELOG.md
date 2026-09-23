@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Ignore cancelled preload failures and redirects after stopping so late results cannot start new loads or remove replacement cached matches.
 - Contain synchronous component and loader exceptions so parallel load failures cannot escape as unhandled rejections or prevent component loading.
 - Ignore late lifecycle-hook failures after navigation is superseded or the router stops, preserving the current route state.
 - Prevent infinite or oversized cache retention from overflowing host timers, preserving finite expiry and clearing obsolete preload timers. Thanks @SebTardif.
