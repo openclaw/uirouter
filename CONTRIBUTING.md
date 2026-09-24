@@ -14,6 +14,8 @@ Report security issues privately as described in [SECURITY.md](SECURITY.md).
 ## Development Setup
 
 Use the Node.js and pnpm versions declared by the repository.
+Dependency engine checks are enforced through `engineStrict` in
+`pnpm-workspace.yaml`; pnpm 11 does not read this setting from `.npmrc`.
 
 ```bash
 pnpm install --frozen-lockfile
