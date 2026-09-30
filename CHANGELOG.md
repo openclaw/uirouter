@@ -13,6 +13,7 @@
 
 ### CI
 
+- Refresh Node types, the type-aware linter, and CodeQL while retaining the Node 25-compatible build toolchain. Thanks @dependabot.
 - Refresh development dependencies, pnpm, and pinned GitHub Actions without changing the router API or runtime requirements.
 - Pass the repository explicitly to the GitHub Release job so it works without a local checkout.
 
