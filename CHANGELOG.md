@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.2 - 2026-10-01
+
+**Highlights:** Navigation, refresh, cancellation, and cache state now stay aligned across overlapping route transitions.
+
 ### Fixed
 
 - Abort a preload joined by navigation when the router stops so a late loader result cannot replace the next active match.
