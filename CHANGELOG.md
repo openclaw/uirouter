@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+## 0.1.2 - 2026-10-01
+
+**Highlights:** Navigation, refresh, cancellation, and cache state now stay aligned across overlapping route transitions.
+
 ### Fixed
 
+- Abort a preload joined by navigation when the router stops so a late loader result cannot replace the next active match.
+- Let a pending navigation finish when invalidate or revalidate runs without a route id, so the destination stays active instead of leaving history and router state split.
 - Reject loader redirect cycles and chains longer than 10 redirects during navigation and preload; even terminating chains above the limit now fail. Thanks @SebTardif.
 - Restore strict dependency engine checks with pnpm 11 so unsupported development installs fail early. Thanks @dependabot.
 - Ignore cancelled preload failures and redirects after stopping so late results cannot start new loads or remove replacement cached matches.
