@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### CI
+
+- Refresh Node types and check Node 25 in CI while retaining compatible build and test tools. Thanks @dependabot.
+
 ## 0.1.2 - 2026-10-01
 
 **Highlights:** Navigation, refresh, cancellation, and cache state now stay aligned across overlapping route transitions.
