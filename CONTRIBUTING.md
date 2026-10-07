@@ -16,6 +16,9 @@ Report security issues privately as described in [SECURITY.md](SECURITY.md).
 Use the Node.js and pnpm versions declared by the repository.
 Dependency engine checks are enforced through `engineStrict` in
 `pnpm-workspace.yaml`; pnpm 11 does not read this setting from `.npmrc`.
+The declared Node.js range includes Node 25. CI checks that version on Ubuntu
+as well as Node 22 and 24 across Ubuntu, macOS, and Windows; dependency updates
+must preserve those supported development installs.
 
 ```bash
 pnpm install --frozen-lockfile
