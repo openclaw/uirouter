@@ -4,6 +4,7 @@
 
 ### CI
 
+- Refresh the formatter, linter, and Node setup action while preserving Node 25-compatible build tooling. Thanks @dependabot.
 - Refresh Node types and check Node 25 in CI while retaining compatible build and test tools. Thanks @dependabot.
 
 ## 0.1.2 - 2026-10-01
