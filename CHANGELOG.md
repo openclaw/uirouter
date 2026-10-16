@@ -4,6 +4,7 @@
 
 ### CI
 
+- Update oxfmt to 0.73.0 and oxlint to 1.88.0 while retaining the complete Node 25-compatible build toolchain. Thanks @dependabot.
 - Refresh the formatter, linter, and Node setup action while preserving Node 25-compatible build tooling. Thanks @dependabot.
 - Refresh Node types and check Node 25 in CI while retaining compatible build and test tools. Thanks @dependabot.
 
