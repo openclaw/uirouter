@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Current package version to validate, without a v prefix
+        required: true
+        type: string
+      dry_run:
+        description: Validate without npm or GitHub publication
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -17,6 +27,7 @@ env:
 
 jobs:
   publish:
+    if: ${{ github.event_name == 'push' || inputs.dry_run }}
     name: Publish @openclaw/uirouter
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -85,7 +96,7 @@ jobs:
       - name: Validate release tag
         env:
           RELEASE_SHA: ${{ github.sha }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
         run: |
           set -euo pipefail
           git fetch --no-tags origin main
@@ -133,10 +144,11 @@ jobs:
         run: pnpm run check
 
       - name: Publish with npm trusted publishing
-        if: steps.npm-version.outputs.published != 'true'
+        if: github.event_name == 'push' && steps.npm-version.outputs.published != 'true'
         run: npm publish --access public --provenance
 
   release:
+    if: github.event_name == 'push'
     name: Publish GitHub Release
     runs-on: ubuntu-latest
     timeout-minutes: 5
