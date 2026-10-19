@@ -19,6 +19,7 @@ Dependency engine checks are enforced through `engineStrict` in
 The declared Node.js range includes Node 25. CI checks that version on Ubuntu
 as well as Node 22 and 24 across Ubuntu, macOS, and Windows; dependency updates
 must preserve those supported development installs.
+The macOS matrix uses the Apple Silicon macOS 27 `xcode-27` runner.
 
 ```bash
 pnpm install --frozen-lockfile
@@ -70,3 +71,12 @@ application data.
 After the one-time registry bootstrap package, maintainers publish from a
 `vX.Y.Z` tag on `main` through the trusted-publishing workflow. Do not add an
 npm automation token.
+
+Validate the current package version on `main` without publishing:
+
+```sh
+gh workflow run release.yml --ref main -f version=X.Y.Z -f dry_run=true
+```
+
+This runs the release metadata, source, and package checks. npm and GitHub
+publication remain restricted to tag pushes.
