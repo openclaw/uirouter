@@ -4,6 +4,8 @@
 
 ### CI
 
+- Use Node.js24.22.1 for release tooling to reject the disclosed eMudhra incident keys.
+
 - Update CodeQL to 4.39.0 while preserving the Node 25-compatible build and test toolchain. Thanks @dependabot.
 - Run macOS checks on Apple Silicon `xcode-27` runners and support non-publishing release validation on `main`.
 
