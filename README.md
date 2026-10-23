@@ -294,6 +294,10 @@ Path helpers: `normalizeRoutePath`, `normalizeRouteBasePath`.
 
 ## Scripts
 
+The development toolchain also supports Node 25. Keep tsdown on 0.22 and Vitest
+on 4.x until newer releases support that runtime; strict engine checks and the
+Node 25 CI job enforce this compatibility contract.
+
 ```sh
 pnpm install
 pnpm run build

@@ -2,7 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
+
 ### CI
+
+- Keep tsdown and Vitest on their Node 25-compatible release lines, prevent incompatible automated upgrades, and refresh the formatter, linter, test patches, and pnpm 11 tooling. Thanks @dependabot.
 
 - Use Node.js24.22.1 for release tooling to reject the disclosed eMudhra incident keys.
 
