@@ -8,6 +8,8 @@
 
 ### CI
 
+- Pin Node 22/24 CI checks to 22.23.4/24.22.1 while retaining Node 25 compatibility coverage.
+
 - Keep tsdown and Vitest on their Node 25-compatible release lines, prevent incompatible automated upgrades, and refresh the formatter, linter, test patches, and pnpm 11 tooling. Thanks @dependabot.
 
 - Use Node.js24.22.1 for release tooling to reject the disclosed eMudhra incident keys.
