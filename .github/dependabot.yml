@@ -7,12 +7,6 @@ updates:
       interval: daily
     cooldown:
       default-days: 2
-    ignore:
-      # Keep the build and test toolchain compatible with supported Node 25.
-      - dependency-name: tsdown
-        versions: [">=0.23.0"]
-      - dependency-name: vitest
-        versions: [">=5.0.0"]
     groups:
       production:
         dependency-type: production

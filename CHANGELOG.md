@@ -8,6 +8,8 @@
 
 ### CI
 
+- Qualify patched Node 26.12.1 in place of Node 25 for development and retire its dependency-update restrictions. Preserve the published JavaScript engine range and Node 22/24 qualification.
+
 - Pin Node 22/24 CI checks to 22.23.4/24.22.1 while retaining Node 25 compatibility coverage.
 
 - Keep tsdown and Vitest on their Node 25-compatible release lines, prevent incompatible automated upgrades, and refresh the formatter, linter, test patches, and pnpm 11 tooling. Thanks @dependabot.
