@@ -8,7 +8,9 @@
 
 ### CI
 
-- Qualify patched Node 26.12.1 in place of Node 25 for development and retire its dependency-update restrictions. Preserve the published JavaScript engine range and Node 22/24 qualification.
+- Refresh tsdown, Vitest, and the type-aware lint backend after retiring Node 25 development qualification; preserve the package's exports and runtime engine range.
+
+- Qualify patched Node 26.12.1 in place of Node 25 for development and retire its dependency-update restrictions. Preserve the published JavaScript engine range and Node 22/24 qualification. Thanks @joshavant.
 
 - Pin Node 22/24 CI checks to 22.23.4/24.22.1 while retaining Node 25 compatibility coverage.
 
