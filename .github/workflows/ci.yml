@@ -43,7 +43,7 @@ jobs:
           - xcode-27
           - windows-latest
         include:
-          - node: 25
+          - node: 26.12.1
             os: ubuntu-latest
     steps:
       - name: Check out
