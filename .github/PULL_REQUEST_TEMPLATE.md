@@ -10,6 +10,15 @@ For other changes, describe the need without inventing a bug.
 Name the affected router surface (route matching, navigation, loader lifecycle,
 caching, subscriptions, history adapter, exports, types). Do not describe the
 code-level cause here.
+
+Start with the reader's problem or task and why it matters, before implementation.
+Illustrative examples (adapt to the actual change; do not copy as boilerplate):
+- Implementation-first: "Add a navigation generation guard."
+  Reader-first: "Fixes: a slow loader replaces the current route's data when
+  a consumer navigates again before it finishes."
+- Implementation-first: "Expand the loaderDeps documentation."
+  Reader-first: "App authors need to know which inputs belong in loaderDeps
+  so cached route data stays tied to the right match."
 -->
 
 ## User Impact
@@ -39,10 +48,10 @@ behavior or a material tradeoff. Do not hide risks or required actions in <detai
 <!--
 Show the most useful proof that this change works. Useful evidence includes:
 
-- output of `pnpm run check` (baseline gate)
-- focused vitest test names from `test/router-*.test.ts`
 - before/after behavior for navigation, loading, redirect, notFound, preload,
   invalidate, revalidate, or subscription scenarios
+- focused vitest test names from `test/router-*.test.ts`
+- output of `pnpm run check` (baseline gate)
 - tarball contents from `pnpm run pack:check` when packaging changes
 - CI run links or redacted logs
 
@@ -50,6 +59,12 @@ Reviewers will inspect the code, tests, and CI. Use this section to make the
 validation easy to understand, not to restate the diff.
 Summarize what was checked and the result; note meaningful gaps. Link long output
 or put it in optional <details>, keeping the useful evidence summary visible.
+Put validation outcomes before commands or logs: say which behavior or artifact
+was checked, what happened, and what remains unverified, then give the supporting
+command, test name, or link. For example, prefer "An older loader result cannot
+replace the current match after a second navigation; the focused stale-result
+test passed" over only "Ran pnpm run test." Examples are illustrative, not new
+tests or gates.
 -->
 
 <!--
