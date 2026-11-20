@@ -16,6 +16,10 @@ type TestData = {
   dep?: string;
   version?: number;
 };
+const cacheRoutes = [
+  { id: "chat", path: "/chat", component: () => "chat" },
+  { id: "other", path: "/other", component: () => "other" },
+];
 const MAX_TIMER_DELAY = 2 ** 31 - 1;
 
 describe("router loading", () => {
@@ -23,39 +27,29 @@ describe("router loading", () => {
     vi.useRealTimers();
   });
 
-  it("publishes a loaded target component before slower route data resolves", async () => {
-    const data = deferred<TestData>();
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"chat", TestContext, TestModule, TestData>({
-          id: "chat",
-          path: "/chat",
-          component: () => ({ view: "chat" }),
-          loader: () => data.promise,
-        }),
-      ],
+  it("starts component and data loads in parallel and publishes the component first", async () => {
+    const module = deferred<string>();
+    const data = deferred<string>();
+    const component = vi.fn(() => module.promise);
+    const loader = vi.fn(() => data.promise);
+    const router = createRouter({ routes: [{ id: "chat", path: "/chat", component, loader }] });
+
+    const navigation = router.navigate("chat", undefined);
+    const calls = () => [component.mock.calls.length, loader.mock.calls.length];
+    await expect.poll(calls).toEqual([1, 1]);
+    module.resolve("view");
+    await expect.poll(() => router.getState().matches[0]?.module).toBe("view");
+    expect(router.getState()).toMatchObject({
+      status: "loading",
+      pendingMatches: [],
+      matches: [{ routeId: "chat", status: "pending" }],
     });
+    expect(router.getState().matches[0].data).toBeUndefined();
 
-    const navigation = router.navigate("chat", { label: "agent" });
-    await expect.poll(() => router.getState().matches[0]?.module).toBeDefined();
-
-    const loadingState = router.getState();
-    expect(loadingState.status).toBe("loading");
-    expect(loadingState.pendingMatches).toEqual([]);
-    expect(loadingState.matches[0]).toMatchObject({
-      routeId: "chat",
-      status: "pending",
-      module: { view: "chat" },
-    });
-    expect(loadingState.matches[0]?.data).toBeUndefined();
-
-    data.resolve({ label: "agent", route: "chat" });
+    data.resolve("loaded");
     await navigation;
-    expect(router.getState().matches[0]).toMatchObject({
-      routeId: "chat",
-      status: "success",
-      data: { label: "agent", route: "chat" },
-    });
+    expect(router.getState().matches).toMatchObject([{ status: "success", data: "loaded" }]);
+    router.stop();
   });
 
   it("starts a fresh loader when returning to a cancelled match", async () => {
@@ -387,25 +381,15 @@ describe("router loading", () => {
 
   it("garbage-collects expired cached preload matches", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(0);
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"chat", TestContext, TestModule, TestData>({
-          id: "chat",
-          path: "/chat",
-          preloadGcTime: 10,
-          component: () => ({ view: "chat" }),
-          loader: (context) => ({ label: context.label, route: "chat" }),
-        }),
-      ],
+    const router = createRouter({
+      routes: [{ id: "chat", path: "/chat", preloadGcTime: 10, component: () => "chat" }],
     });
-
-    await router.preloadRoute("chat", { label: "preloaded" });
+    await router.preloadRoute("chat", undefined);
+    await vi.advanceTimersByTimeAsync(9);
     expect(router.getState().cachedMatches).toHaveLength(1);
-
-    await vi.advanceTimersByTimeAsync(11);
-
+    await vi.advanceTimersByTimeAsync(1);
     expect(router.getState().cachedMatches).toEqual([]);
+    router.stop();
   });
 
   it.each(["navigation", "preload"] as const)(
@@ -436,10 +420,7 @@ describe("router loading", () => {
     vi.useFakeTimers();
     const router = createRouter({
       gcTime,
-      routes: [
-        { id: "chat", path: "/chat", component: () => "chat" },
-        { id: "other", path: "/other", component: () => "other" },
-      ],
+      routes: cacheRoutes,
     });
     await router.navigate("chat", undefined);
     await router.navigate("other", undefined);
@@ -452,36 +433,15 @@ describe("router loading", () => {
 
   it("cancels a finite preload timer when cache retention becomes Infinity", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(0);
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      preloadGcTime: 10,
-      gcTime: Infinity,
-      routes: [
-        definePage<"chat", TestContext, TestModule, TestData>({
-          id: "chat",
-          path: "/chat",
-          component: () => ({ view: "chat" }),
-          loader: (context) => ({ label: context.label, route: "chat" }),
-        }),
-        definePage<"fast", TestContext, TestModule, TestData>({
-          id: "fast",
-          path: "/fast",
-          component: () => ({ view: "fast" }),
-          loader: (context) => ({ label: context.label, route: "fast" }),
-        }),
-      ],
-    });
-
-    await router.preloadRoute("chat", { label: "preloaded" });
-    await router.navigate("chat", { label: "preloaded" });
-    await router.navigate("fast", { label: "active" });
-    await vi.advanceTimersByTimeAsync(11);
-
-    expect(router.getState().cachedMatches).toHaveLength(1);
-    expect(router.getState().cachedMatches[0]).toMatchObject({
-      routeId: "chat",
-      status: "success",
-    });
+    const router = createRouter({ preloadGcTime: 10, gcTime: Infinity, routes: cacheRoutes });
+    await router.preloadRoute("chat", undefined);
+    expect(vi.getTimerCount()).toBe(1);
+    await router.navigate("chat", undefined);
+    await router.navigate("other", undefined);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(router.getState().cachedMatches).toMatchObject([{ routeId: "chat", status: "success" }]);
+    router.stop();
   });
 
   it.each(["navigation", "preload"] as const)(
