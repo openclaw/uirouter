@@ -324,6 +324,37 @@ describe("router loading", () => {
     });
   });
 
+  it("preloads a cached route after its revalidation was cancelled", async () => {
+    const refresh = deferred<string>();
+    const router = createRouter({
+      routes: [
+        {
+          id: "a",
+          path: "/a",
+          component: () => "a",
+          loader: (context: string, { signal }) => {
+            signal.throwIfAborted();
+            return context === "refresh" ? refresh.promise : context;
+          },
+        },
+        { id: "b", path: "/b", component: () => "b" },
+      ],
+    });
+
+    await router.navigate("a", "seed");
+    const refreshing = router.revalidate("refresh");
+    await router.navigate("b", "away");
+    expect(router.getState().cachedMatches[0]?.isFetching).toBe(false);
+    await router.preloadRoute("a", "replacement");
+    refresh.resolve("obsolete");
+    await refreshing;
+
+    expect(router.getState().cachedMatches).toMatchObject([
+      { routeId: "a", status: "success", data: "replacement", isFetching: false },
+    ]);
+    router.stop();
+  });
+
   it("refetches a named route even when its cached match is fresh", async () => {
     const loader = vi.fn((context: string, { cause }: { cause: RouteLoadCause }) => ({
       context,

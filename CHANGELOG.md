@@ -22,6 +22,8 @@
 
 - Cancel a preload superseded by a forced load so its late failure cannot evict fresh data or follow an obsolete redirect.
 
+- Allow preloading a cached route again after navigating away during revalidation.
+
 ### CI
 
 - Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.
