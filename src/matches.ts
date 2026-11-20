@@ -391,14 +391,14 @@ export function compileRoutes<TRouteId extends string, TLoadContext, TModule, TD
 
   return {
     byId,
-    pathForRoute(routeId: TRouteId, basePath = "") {
+    pathForRoute(this: void, routeId: TRouteId, basePath = "") {
       const route = byId.get(routeId);
       if (!route) {
         throw new Error(`Unknown route id "${routeId}".`);
       }
       return `${normalizeRouteBasePath(basePath)}${route.path}`;
     },
-    routeIdFromPath(pathname: string, basePath = "") {
+    routeIdFromPath(this: void, pathname: string, basePath = "") {
       const key = pathKey(pathnameWithoutBase(pathname, basePath));
       return byPath.get(key) ?? null;
     },
