@@ -30,6 +30,8 @@
 
 - Reuse the previous pnpm store for each OS and architecture when a dependency update changes the lockfile.
 
+- Pin development to pnpm 11.28.10, the version the CI setup action installs during bootstrap.
+
 - Update Vitest to 5.1.0 and tsdown to 0.23.4, align Oxlint ranges, and remove expired TypeScript cooldown exceptions while retaining the two-day policy. Thanks @dependabot[bot].
 
 - Run ClawSweeper dispatch and weekly stale triage on single-CPU Linux runners.
