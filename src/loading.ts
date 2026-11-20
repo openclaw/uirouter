@@ -169,8 +169,16 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     }));
     // A subscriber can stop the router while observing the fetch above.
     hookOptions.signal.throwIfAborted();
-    const isCurrentFetch = (matchId: string) =>
-      matchStore.getMatch(matchId)?.fetchCount === fetchCount && !hookOptions.signal.aborted;
+    // A new match after stop() starts again at fetchCount 1, so identity is the signal.
+    const isCurrentFetch = (matchId: string) => {
+      const stored = matchStore.getMatch(matchId);
+      return (
+        stored !== undefined &&
+        stored.fetchCount === fetchCount &&
+        stored.abortController.signal === hookOptions.signal &&
+        !hookOptions.signal.aborted
+      );
+    };
     const dataPromise = loadData(current, route, context, hookOptions, force);
     const modulePromise = loadModule(route, current);
     const visibleModulePromise = modulePromise.then((module) => {

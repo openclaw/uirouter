@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Keep the module loaded after restart when a component import from before stop resolves later.
+
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
 
 - Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.

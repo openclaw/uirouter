@@ -48,6 +48,49 @@ describe("router loading errors", () => {
     router.stop();
   });
 
+  it("keeps a replacement module when an import from before stop resolves", async () => {
+    const { promise, resolve } = deferred<string>();
+    let loads = 0;
+    const component = vi.fn(() => Promise.resolve("replacement"));
+    component.mockReturnValueOnce(promise);
+    const router = createRouter({
+      routes: [
+        {
+          id: "page",
+          path: "/page",
+          component,
+          loader: () => {
+            loads += 1;
+            if (loads === 1) {
+              throw new Error("loader failed");
+            }
+            return "fresh";
+          },
+        },
+      ],
+    });
+
+    await router.preloadRoute("page", undefined);
+    router.stop();
+    await router.preloadRoute("page", undefined);
+    expect(router.getState().cachedMatches[0]).toMatchObject({
+      data: "fresh",
+      module: "replacement",
+    });
+    resolve("stale module");
+    await promise;
+    await new Promise<void>((done) => {
+      setTimeout(done, 0);
+    });
+
+    expect(router.getState().cachedMatches[0]).toMatchObject({
+      data: "fresh",
+      module: "replacement",
+    });
+    expect(component).toHaveBeenCalledTimes(2);
+    router.stop();
+  });
+
   it("loads the component even when a synchronous loader fails and permits retry", async () => {
     const failure = new Error("loader failed");
     const component = vi.fn(() => ({ view: "page" }));
