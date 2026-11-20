@@ -14,6 +14,10 @@
 
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
+### Performance
+
+- Update individual cache entries during preload and navigation. Match lists are copied on demand when a caller reads state or a state subscriber needs a snapshot.
+
 ### CI
 
 - Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.
