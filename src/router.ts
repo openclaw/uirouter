@@ -565,16 +565,25 @@ export function createRouter<
     pathForRoute: compiled.pathForRoute,
     routeIdFromPath: compiled.routeIdFromPath,
     start(nextHistory: RouterHistory, nextBasePath: string, context: TLoadContext): Promise<void> {
+      const previous = stopHistory;
+      let unsubscribe: (() => void) | undefined;
+      const detach = () => unsubscribe?.();
+      stopHistory = detach;
       history = nextHistory;
       basePath = nextBasePath;
-      stopHistory?.();
       lastContext = { value: context };
-      stopHistory = history.listen((location) => {
-        if (lastContext) {
+      previous?.();
+      unsubscribe = nextHistory.listen((location) => {
+        if (stopHistory === detach && lastContext) {
           void handleLocation(location, lastContext.value).catch(() => undefined);
         }
       });
-      return handleLocation(history.location(), context, true);
+      // A synchronous replay can stop or restart the router before listen returns.
+      if (stopHistory !== detach) {
+        unsubscribe();
+        return Promise.resolve();
+      }
+      return handleLocation(nextHistory.location(), context, true);
     },
     navigate,
     navigateLocation(location: RouteLocation, context: TLoadContext): Promise<void> {
@@ -596,8 +605,9 @@ export function createRouter<
       return navigate(targetRouteId, context, { history: "none", revalidate: true }, target);
     },
     stop() {
-      stopHistory?.();
+      const detach = stopHistory;
       stopHistory = undefined;
+      detach?.();
       cancelCurrentRun();
       history = undefined;
       lastContext = undefined;

@@ -12,6 +12,8 @@
 
 - Replace the history entry when a loader redirects to an unmatched location, keeping the address in sync with the not-found state.
 
+- Detach a history listener when a subscriber stops or restarts the router during synchronous location replay.
+
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
 - Keep a restarted router’s cached component when an import from before stop rejects.
