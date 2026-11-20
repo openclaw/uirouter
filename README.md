@@ -38,7 +38,7 @@ const chat = definePage({
   id: "chat",
   path: "/chat",
   component: () => import("./pages/chat.js"),
-  loader: async (context, { signal }) => {
+  loader: async (context: { userId: string }, { signal }) => {
     const response = await fetch(`/api/threads/${context.userId}`, { signal });
     return response.json();
   },
@@ -106,7 +106,8 @@ to have the router update the underlying history.
 A `loader` returns the route data; `loaderDeps` derives a string key from
 context and location. Two navigations that produce the same `(routeId, deps)`
 share a match, so dependency-driven re-fetching is just a matter of returning
-a different deps string.
+a different deps string. Pass the opaque `match.id` from router state to
+`getMatch` and `subscribeMatch`.
 
 Components and data load in parallel. Synchronous throws and rejected promises
 both follow the router's error path; a failure in one task does not leave the
@@ -151,7 +152,7 @@ definePage({
   id: "thread",
   path: "/thread",
   component: () => import("./pages/thread.js"),
-  loader: async (context, { signal }) => {
+  loader: async (context: { session: boolean }, { signal }) => {
     if (!context.session) {
       throw redirect({ pathname: "/login", search: "", hash: "" });
     }

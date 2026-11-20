@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Keep empty route IDs and dependency keys containing null characters distinct during matching, and normalize repeated trailing slashes in generated paths.
+
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
 
 ### CI
