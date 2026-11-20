@@ -37,12 +37,6 @@ export type MatchStore<TRouteId extends string, TModule, TData> = {
   ) => () => boolean;
 };
 
-export type CompiledRoutes<TRouteId extends string, TLoadContext, TModule, TData> = {
-  byId: Map<TRouteId, PageDefinition<TRouteId, TLoadContext, TModule, TData>>;
-  pathForRoute: (routeId: TRouteId, basePath?: string) => string;
-  routeIdFromPath: (pathname: string, basePath?: string) => TRouteId | null;
-};
-
 export function matchIdForLocation(routeId: string, deps: string): string {
   // JSON escapes null characters, so this form cannot overlap a delimited id.
   if (routeId.includes("\u0000")) {
@@ -335,7 +329,7 @@ function pathnameWithoutBase(pathname: string, basePath: string): string {
 
 export function compileRoutes<TRouteId extends string, TLoadContext, TModule, TData>(
   routes: RouterOptions<TRouteId, TLoadContext, TModule, TData>["routes"],
-): CompiledRoutes<TRouteId, TLoadContext, TModule, TData> {
+) {
   const byId = new Map<TRouteId, PageDefinition<TRouteId, TLoadContext, TModule, TData>>();
   const byPath = new Map<string, TRouteId>();
 
@@ -357,14 +351,14 @@ export function compileRoutes<TRouteId extends string, TLoadContext, TModule, TD
 
   return {
     byId,
-    pathForRoute(routeId, basePath = "") {
+    pathForRoute(this: void, routeId: TRouteId, basePath = "") {
       const route = byId.get(routeId);
       if (!route) {
         throw new Error(`Unknown route id "${routeId}".`);
       }
       return `${normalizeRouteBasePath(basePath)}${route.path}`;
     },
-    routeIdFromPath(pathname, basePath = "") {
+    routeIdFromPath(this: void, pathname: string, basePath = "") {
       const key = pathKey(pathnameWithoutBase(pathname, basePath));
       return byPath.get(key) ?? null;
     },

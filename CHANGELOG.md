@@ -10,6 +10,8 @@
 
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
+- Keep a restarted router’s cached component when an import from before stop rejects.
+
 - Release state, selector, and match subscriptions on stop so listeners from a previous session do not receive updates after restart.
 
 - Keep the router idle and skip further loads when a subscriber stops a pending or redirecting navigation.
@@ -19,6 +21,8 @@
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
 - Cancel a preload superseded by a forced load so its late failure cannot evict fresh data or follow an obsolete redirect.
+
+- Allow preloading a cached route again after navigating away during revalidation.
 
 ### Performance
 

@@ -1,12 +1,10 @@
 import type { MatchStore } from "./matches";
 import type {
-  MaybePromise,
   PageDefinition,
   RouteHookOptions,
   RouteMatch,
   RouteNotFound,
   RouteRedirect,
-  RouteLoaderResult,
   RouteStaleReloadMode,
 } from "./types";
 
@@ -18,30 +16,6 @@ export type RouteLoadResult<TModule, TData> = {
 type RouteDataResult<TData> = {
   data: TData | undefined;
   updatedAt: number;
-};
-
-export type RouteLoading<TRouteId extends string, TLoadContext, TModule, TData> = {
-  loadRoute: (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-    context: TLoadContext,
-    hookOptions: RouteHookOptions,
-    force: boolean,
-    onComponentLoaded?: (module: TModule) => void,
-  ) => Promise<RouteLoadResult<TModule, TData>>;
-  scheduleGc: (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-  ) => void;
-  isFresh: (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-    cause: RouteHookOptions["cause"],
-  ) => boolean;
-  shouldReloadInBackground: (
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-  ) => boolean;
-  clear: () => void;
 };
 
 type RouteLoadingOptions = {
@@ -67,35 +41,26 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 export function createRouteLoading<TRouteId extends string, TLoadContext, TModule, TData>(
   options: RouteLoadingOptions,
   matchStore: MatchStore<TRouteId, TModule, TData>,
-): RouteLoading<TRouteId, TLoadContext, TModule, TData> {
+) {
+  type Route = PageDefinition<TRouteId, TLoadContext, TModule, TData>;
+  type Match = RouteMatch<TRouteId, TModule, TData>;
   const moduleCache = new Map<TRouteId, Promise<TModule>>();
   const inFlight = new Map<
     string,
     { signal: AbortSignal; promise: Promise<RouteLoadResult<TModule, TData>> }
   >();
   const gcTimers = new Map<string, ReturnType<typeof globalThis.setTimeout>>();
-  const freshTimeFor = (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-    cause: RouteHookOptions["cause"],
-  ) =>
+  const freshTimeFor = (match: Match, route: Route, cause: RouteHookOptions["cause"]) =>
     match.preload || cause === "preload"
       ? (route.preloadStaleTime ?? options.preloadStaleTime)
       : (route.staleTime ?? options.staleTime);
 
-  const isFresh = (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-    cause: RouteHookOptions["cause"],
-  ) =>
+  const isFresh = (match: Match, route: Route, cause: RouteHookOptions["cause"]) =>
     match.status === "success" &&
     !match.invalid &&
     (!route.loader || Date.now() - match.updatedAt < freshTimeFor(match, route, cause));
 
-  const scheduleGc = (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-  ) => {
+  const scheduleGc = (match: Match, route: Route) => {
     const gcTime = match.preload
       ? (route.preloadGcTime ?? options.preloadGcTime)
       : (route.gcTime ?? options.gcTime);
@@ -137,10 +102,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     (timer as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
   };
 
-  const loadModule = async (
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
-    match: RouteMatch<TRouteId, TModule, TData>,
-  ): Promise<TModule> => {
+  const loadModule = async (route: Route, match: Match): Promise<TModule> => {
     if (match.module !== undefined) {
       return Promise.resolve(match.module);
     }
@@ -150,13 +112,17 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     }
     const loaded = Promise.resolve(route.component());
     moduleCache.set(route.id, loaded);
-    void loaded.catch(() => moduleCache.delete(route.id));
+    void loaded.catch(() => {
+      if (moduleCache.get(route.id) === loaded) {
+        moduleCache.delete(route.id);
+      }
+    });
     return loaded;
   };
 
   const loadData = async (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
+    match: Match,
+    route: Route,
     context: TLoadContext,
     hookOptions: RouteHookOptions,
     force: boolean,
@@ -170,7 +136,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       scheduleGc(current, route);
       return Promise.resolve({ data: current.data, updatedAt: current.updatedAt });
     }
-    const loaded: MaybePromise<RouteLoaderResult<TData>> | undefined = route.loader?.(context, {
+    const loaded = route.loader?.(context, {
       ...hookOptions,
       deps: current.deps,
     });
@@ -183,8 +149,8 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
   };
 
   const loadRoute = async (
-    match: RouteMatch<TRouteId, TModule, TData>,
-    route: PageDefinition<TRouteId, TLoadContext, TModule, TData>,
+    match: Match,
+    route: Route,
     context: TLoadContext,
     hookOptions: RouteHookOptions,
     force: boolean,
@@ -262,7 +228,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     loadRoute,
     scheduleGc,
     isFresh,
-    shouldReloadInBackground: (route) =>
+    shouldReloadInBackground: (route: Route) =>
       (route.staleReloadMode ?? options.staleReloadMode) === "background",
     clear() {
       const state = matchStore.getState();

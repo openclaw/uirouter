@@ -164,10 +164,14 @@ export function createRouter<
     if (current?.status !== "success") {
       return;
     }
-    matches.cacheMatch(current);
+    // A superseded revalidation can leave usable data behind, but its signal is spent.
+    const cached = current.abortController.signal.aborted
+      ? { ...current, abortController: new AbortController(), isFetching: false as const }
+      : current;
+    matches.cacheMatch(cached);
     const route = compiled.byId.get(current.routeId);
     if (route) {
-      loading.scheduleGc(current, route);
+      loading.scheduleGc(cached, route);
     }
   };
 
