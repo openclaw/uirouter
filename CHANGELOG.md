@@ -26,6 +26,8 @@
 
 - Run ClawSweeper dispatch and weekly stale triage on single-CPU Linux runners.
 
+- Prioritize the latest main commit when merges overlap and let manual CI finish independently.
+
 - Keep full weekly CodeQL analysis without duplicate main-push scans, isolate scheduled and manual runs, and analyze PRs when marked ready for review.
 
 - Refresh tsdown, Vitest, and the type-aware lint backend after retiring Node 25 development qualification; preserve the package's exports and runtime engine range.
