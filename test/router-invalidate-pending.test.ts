@@ -74,49 +74,55 @@ function expectSecondChatMatch(
 }
 
 describe("invalidate during a pending navigation", () => {
-  it.each(["invalidate", "revalidate"] as const)("lets a pending route finish during untargeted %s", async (method) => {
-    const { router, history, finishLoader, finishComponent } = createPendingDestination();
-    await router.start(history, "", "ctx");
-    const navigation = router.navigate("b", "ctx", { history: "push" });
+  it.each(["invalidate", "revalidate"] as const)(
+    "lets a pending route finish during untargeted %s",
+    async (method) => {
+      const { router, history, finishLoader, finishComponent } = createPendingDestination();
+      await router.start(history, "", "ctx");
+      const navigation = router.navigate("b", "ctx", { history: "push" });
 
-    if (method === "revalidate") {
-      await router.revalidate("ctx");
-    } else {
-      await router.invalidate();
-    }
-    finishComponent();
-    finishLoader();
-    await navigation;
+      if (method === "revalidate") {
+        await router.revalidate("ctx");
+      } else {
+        await router.invalidate();
+      }
+      finishComponent();
+      finishLoader();
+      await navigation;
 
-    expectDestinationB(history, router);
-    router.stop();
-  });
+      expectDestinationB(history, router);
+      router.stop();
+    },
+  );
 
-  it.each(["invalidate", "revalidate"] as const)("lets a pending dependency change finish during untargeted %s", async (method) => {
-    const { router, history, finishLoader } = createPendingMatchDestination();
-    await router.start(history, "", "ctx");
-    const firstMatchId = router.getState().matches[0]?.id;
-    if (!firstMatchId) {
-      throw new Error("expected an active match");
-    }
-    const navigation = router.navigate(
-      "chat",
-      "ctx",
-      { history: "push" },
-      location("/chat", "?session=two"),
-    );
+  it.each(["invalidate", "revalidate"] as const)(
+    "lets a pending dependency change finish during untargeted %s",
+    async (method) => {
+      const { router, history, finishLoader } = createPendingMatchDestination();
+      await router.start(history, "", "ctx");
+      const firstMatchId = router.getState().matches[0]?.id;
+      if (!firstMatchId) {
+        throw new Error("expected an active match");
+      }
+      const navigation = router.navigate(
+        "chat",
+        "ctx",
+        { history: "push" },
+        location("/chat", "?session=two"),
+      );
 
-    if (method === "revalidate") {
-      await router.revalidate("ctx");
-    } else {
-      await router.invalidate();
-    }
-    finishLoader();
-    await navigation;
+      if (method === "revalidate") {
+        await router.revalidate("ctx");
+      } else {
+        await router.invalidate();
+      }
+      finishLoader();
+      await navigation;
 
-    expectSecondChatMatch(history, router, firstMatchId);
-    router.stop();
-  });
+      expectSecondChatMatch(history, router, firstMatchId);
+      router.stop();
+    },
+  );
 
   it("preserves invalidation when the previous active match moves into cache", async () => {
     let loadACount = 0;

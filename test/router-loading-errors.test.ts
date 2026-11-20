@@ -50,12 +50,23 @@ describe("router loading errors", () => {
 
     await expect(router.navigate("page", "initial")).rejects.toBe(failure);
     expect(component).toHaveBeenCalledOnce();
-    expect(router.getState()).toMatchObject({status: "error", matches: [{routeId: "page", status: "error", error: failure, isFetching: false}]});
+    expect(router.getState()).toMatchObject({
+      status: "error",
+      matches: [{ routeId: "page", status: "error", error: failure, isFetching: false }],
+    });
     await router.revalidate("retried");
     expect(attempts).toBe(2);
     expect(router.getState()).toMatchObject({
       status: "success",
-      matches: [{ status: "success", data: "retried", error: undefined, invalid: false, module: { view: "page" } }],
+      matches: [
+        {
+          status: "success",
+          data: "retried",
+          error: undefined,
+          invalid: false,
+          module: { view: "page" },
+        },
+      ],
     });
     expect(component).toHaveBeenCalledOnce();
     router.stop();

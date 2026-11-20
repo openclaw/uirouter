@@ -363,28 +363,31 @@ describe("router loading", () => {
     expect(router.getState().cachedMatches).toEqual([]);
   });
 
-  it.each(["navigation", "preload"] as const)("keeps %s matches with infinite retention without a timer", async (cause) => {
-    vi.useFakeTimers();
-    const router = createRouter({
-      gcTime: cause === "navigation" ? Infinity : 10,
-      preloadGcTime: cause === "preload" ? Infinity : 10,
-      routes: [
-        { id: "chat", path: "/chat", component: () => "chat" },
-        { id: "other", path: "/other", component: () => "other" },
-      ],
-    });
-    if (cause === "preload") {
-      await router.preloadRoute("chat", undefined);
-    } else {
-      await router.navigate("chat", undefined);
-      await router.navigate("other", undefined);
-    }
-    expect(router.getState().cachedMatches).toMatchObject([{routeId: "chat"}]);
-    expect(vi.getTimerCount()).toBe(0);
-    router.stop();
-  });
+  it.each(["navigation", "preload"] as const)(
+    "keeps %s matches with infinite retention without a timer",
+    async (cause) => {
+      vi.useFakeTimers();
+      const router = createRouter({
+        gcTime: cause === "navigation" ? Infinity : 10,
+        preloadGcTime: cause === "preload" ? Infinity : 10,
+        routes: [
+          { id: "chat", path: "/chat", component: () => "chat" },
+          { id: "other", path: "/other", component: () => "other" },
+        ],
+      });
+      if (cause === "preload") {
+        await router.preloadRoute("chat", undefined);
+      } else {
+        await router.navigate("chat", undefined);
+        await router.navigate("other", undefined);
+      }
+      expect(router.getState().cachedMatches).toMatchObject([{ routeId: "chat" }]);
+      expect(vi.getTimerCount()).toBe(0);
+      router.stop();
+    },
+  );
 
-  it.each([-Infinity, NaN])("expires cached matches with gcTime %s", async (gcTime) => {
+  it.each([-Infinity, Number.NaN])("expires cached matches with gcTime %s", async (gcTime) => {
     vi.useFakeTimers();
     const router = createRouter({
       gcTime,
@@ -436,30 +439,37 @@ describe("router loading", () => {
     });
   });
 
-  it.each(["navigation", "preload"] as const)("expires long %s retention only after the full duration", async (cause) => {
-    vi.useFakeTimers();
-    vi.setSystemTime(0);
-    const retention = 30 * 24 * 60 * 60 * 1000;
-    const router = createRouter({
-      preloadGcTime: retention,
-      gcTime: retention,
-      routes: [{ id: "chat", path: "/chat", component: () => "chat" }, { id: "other", path: "/other", component: () => "other" }],
-    });
+  it.each(["navigation", "preload"] as const)(
+    "expires long %s retention only after the full duration",
+    async (cause) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(0);
+      const retention = 30 * 24 * 60 * 60 * 1000;
+      const router = createRouter({
+        preloadGcTime: retention,
+        gcTime: retention,
+        routes: [
+          { id: "chat", path: "/chat", component: () => "chat" },
+          { id: "other", path: "/other", component: () => "other" },
+        ],
+      });
 
-    if (cause === "preload") {
-      await router.preloadRoute("chat", undefined);
-    } else {
-      await router.navigate("chat", undefined);
-      await router.navigate("other", undefined);
-    }
-    await vi.advanceTimersByTimeAsync(MAX_TIMER_DELAY);
-    expect(router.getState().cachedMatches).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(retention - MAX_TIMER_DELAY - 1);
-    expect(router.getState().cachedMatches).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(1);
-    expect(router.getState().cachedMatches).toEqual([]);
-    router.stop();
-  });
+      if (cause === "preload") {
+        await router.preloadRoute("chat", undefined);
+      } else {
+        await router.navigate("chat", undefined);
+        await router.navigate("other", undefined);
+      }
+      await vi.advanceTimersToNextTimerAsync();
+      expect(Date.now()).toBe(MAX_TIMER_DELAY);
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(retention - MAX_TIMER_DELAY - 1);
+      expect(router.getState().cachedMatches).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(router.getState().cachedMatches).toEqual([]);
+      router.stop();
+    },
+  );
 
   it("aborts in-flight work and clears route state on stop", async () => {
     const data = deferred<TestData>();

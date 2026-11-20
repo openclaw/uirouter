@@ -47,34 +47,37 @@ describe("router control results", () => {
     });
   });
 
-  it.each(["navigate", "preloadRoute"] as const)("rejects a multi-route cycle during %s", async (method) => {
-    let visits = 0;
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"alpha", TestContext, TestModule, TestData>({
-          id: "alpha",
-          path: "/alpha",
-          component: () => ({ view: "alpha" }),
-          loader: (context) =>
-            ++visits > 1 ? { label: context.label } : redirect(location("/beta")),
-        }),
-        definePage<"beta", TestContext, TestModule, TestData>({
-          id: "beta",
-          path: "/beta",
-          component: () => ({ view: "beta" }),
-          loader: () => redirect(location("/alpha")),
-        }),
-      ],
-    });
+  it.each(["navigate", "preloadRoute"] as const)(
+    "rejects a multi-route cycle during %s",
+    async (method) => {
+      let visits = 0;
+      const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+        routes: [
+          definePage<"alpha", TestContext, TestModule, TestData>({
+            id: "alpha",
+            path: "/alpha",
+            component: () => ({ view: "alpha" }),
+            loader: (context) =>
+              ++visits > 1 ? { label: context.label } : redirect(location("/beta")),
+          }),
+          definePage<"beta", TestContext, TestModule, TestData>({
+            id: "beta",
+            path: "/beta",
+            component: () => ({ view: "beta" }),
+            loader: () => redirect(location("/alpha")),
+          }),
+        ],
+      });
 
-    await expect(router[method]("alpha", { label: "loop" })).rejects.toThrow(
-      /Redirect cycle detected: \/alpha -> \/beta -> \/alpha/,
-    );
-    expect(router.getState().status).toBe(method === "navigate" ? "error" : "idle");
-    expect(router.getState().cachedMatches).toEqual([]);
-    expect(visits).toBe(1);
-    router.stop();
-  });
+      await expect(router[method]("alpha", { label: "loop" })).rejects.toThrow(
+        /Redirect cycle detected: \/alpha -> \/beta -> \/alpha/,
+      );
+      expect(router.getState().status).toBe(method === "navigate" ? "error" : "idle");
+      expect(router.getState().cachedMatches).toEqual([]);
+      expect(visits).toBe(1);
+      router.stop();
+    },
+  );
 
   it.each([
     ["navigate", 10],
@@ -102,7 +105,16 @@ describe("router control results", () => {
       await result;
       const state = router.getState();
       const matches = method === "navigate" ? state.matches : state.cachedMatches;
-      expect(matches).toMatchObject([{ routeId: "hop10", location: location("/hop10"), status: "success", module: { view: "hop10" }, data: { label: "boundary" }, preload: method === "preloadRoute" }]);
+      expect(matches).toMatchObject([
+        {
+          routeId: "hop10",
+          location: location("/hop10"),
+          status: "success",
+          module: { view: "hop10" },
+          data: { label: "boundary" },
+          preload: method === "preloadRoute",
+        },
+      ]);
       if (method === "navigate") {
         expect(state.location).toEqual(location("/hop10"));
       }
@@ -227,5 +239,4 @@ describe("router control results", () => {
       pendingMatches: [],
     });
   });
-
 });
