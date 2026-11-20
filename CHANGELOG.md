@@ -8,6 +8,8 @@
 
 ### CI
 
+- Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.
+
 - Refresh the formatter, linter, bundler, Vite, and CodeQL patches while preserving runtime requirements and package exports. Thanks @dependabot.
 
 - Reuse the previous pnpm store for each OS and architecture when a dependency update changes the lockfile.
