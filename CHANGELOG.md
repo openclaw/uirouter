@@ -6,6 +6,8 @@
 
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
 
+- Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.
+
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
 - Release state, selector, and match subscriptions on stop so listeners from a previous session do not receive updates after restart.

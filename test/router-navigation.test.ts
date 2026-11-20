@@ -6,7 +6,7 @@ import {
   normalizeRoutePath,
   type RouteLoadCause,
 } from "../src/index";
-import { location } from "./fixtures";
+import { createMemoryHistory, location } from "./fixtures";
 
 type RouteId = "home" | "chat";
 type TestContext = {
@@ -60,13 +60,25 @@ describe("router route matching", () => {
   });
 });
 
-it("resolves generated paths for routes ending in repeated slashes", () => {
+it("resolves generated paths for routes and history bases ending in repeated slashes", async () => {
   const router = createRouter({
-    routes: [{ id: "chat", path: "chat///", component: () => "chat" }],
+    routes: [
+      { id: "chat", path: "chat///", component: () => "chat" },
+      { id: "archive", path: "/archive", component: () => "archive" },
+    ],
   });
   const path = router.pathForRoute("chat", "app///");
   expect(router.routeIdFromPath(path, "app///")).toBe("chat");
   expect(router.routeIdFromPath(router.pathForRoute("chat"))).toBe("chat");
+  const history = createMemoryHistory(location(path, "?tab=recent", "#reply"));
+  await router.start(history, "app///", undefined);
+  expect(router.getState()).toMatchObject({
+    status: "success",
+    matches: [{ routeId: "chat" }],
+  });
+  await router.navigate("archive", undefined, { history: "push" });
+  expect(history.location().pathname).toBe(router.pathForRoute("archive", "app///"));
+  router.stop();
 });
 
 it("uses an empty route id for location navigation, preloading and revalidation", async () => {
