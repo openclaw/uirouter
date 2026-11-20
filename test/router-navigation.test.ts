@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createRouter, definePage, type RouteLoadCause, type RouteLocation } from "../src/index";
+import {
+  createRouter,
+  definePage,
+  normalizeRouteBasePath,
+  normalizeRoutePath,
+  type RouteLoadCause,
+  type RouteLocation,
+} from "../src/index";
 
 type RouteId = "home" | "chat";
 type TestContext = {
@@ -19,6 +26,17 @@ function location(pathname: string, search = "", hash = ""): RouteLocation {
 }
 
 describe("router route matching", () => {
+  it.each([
+    ["  ", "", "/"],
+    ["/", "", "/"],
+    ["//", "/", "/"],
+    ["///", "//", "//"],
+    [" chat// ", "/chat/", "/chat/"],
+  ])("normalizes %j as a base and as a route path", (input, base, path) => {
+    expect(normalizeRouteBasePath(input)).toBe(base);
+    expect(normalizeRoutePath(input)).toBe(path);
+  });
+
   it("normalizes route paths, aliases, base paths, and index.html paths", () => {
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({
       routes: [

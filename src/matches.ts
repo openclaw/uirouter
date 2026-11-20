@@ -80,6 +80,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
   const active = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
   const pending = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
   const cached = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
+  const pools = [active, pending, cached];
   const listeners = new Set<(state: RouterState<TRouteId, TModule, TData>) => void>();
   const matchListeners = new Map<
     string,
@@ -110,6 +111,14 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     cachedSnapshot = [...cached.values()];
   };
 
+  const getMatch = (matchId: string) =>
+    active.get(matchId) ?? pending.get(matchId) ?? cached.get(matchId);
+
+  const subscribe = (listener: (state: RouterState<TRouteId, TModule, TData>) => void) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+
   const notify = (matchId?: string) => {
     dirty = true;
     if (matchId) {
@@ -126,7 +135,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
       listener(next);
     }
     for (const id of ids) {
-      const match = active.get(id) ?? pending.get(id) ?? cached.get(id);
+      const match = getMatch(id);
       for (const listener of matchListeners.get(id) ?? []) {
         listener(match);
       }
@@ -149,7 +158,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     id: string,
     keep: Map<string, RouteMatch<TRouteId, TModule, TData>>,
   ) => {
-    for (const pool of [active, pending, cached]) {
+    for (const pool of pools) {
       if (pool !== keep && pool.delete(id)) {
         changedMatchIds.add(id);
       }
@@ -183,9 +192,6 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
       notify();
     }
   };
-
-  const getMatch = (matchId: string) =>
-    active.get(matchId) ?? pending.get(matchId) ?? cached.get(matchId);
 
   return {
     batch,
@@ -232,7 +238,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
       notify(matchId);
     },
     updateMatch(matchId, update) {
-      const pool = [active, pending, cached].find((candidate) => candidate.has(matchId));
+      const pool = pools.find((candidate) => candidate.has(matchId));
       const current = pool?.get(matchId);
       if (!pool || !current) {
         return false;
@@ -247,7 +253,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     },
     invalidate(routeId) {
       batch(() => {
-        for (const pool of [active, pending, cached]) {
+        for (const pool of pools) {
           for (const [id, match] of pool) {
             if (routeId === undefined || match.routeId === routeId) {
               pool.set(id, {
@@ -266,7 +272,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     },
     clear() {
       batch(() => {
-        for (const pool of [active, pending, cached]) {
+        for (const pool of pools) {
           for (const id of pool.keys()) {
             changedMatchIds.add(id);
           }
@@ -279,22 +285,17 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
         notify();
       });
     },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
+    subscribe,
     subscribeSelector(selector, listener, equal = Object.is) {
       let previous = selector(readState());
-      const selectedListener = (state: RouterState<TRouteId, TModule, TData>) => {
+      return subscribe((state) => {
         const next = selector(state);
         if (equal(previous, next)) {
           return;
         }
         previous = next;
         listener(next);
-      };
-      listeners.add(selectedListener);
-      return () => listeners.delete(selectedListener);
+      });
     },
     subscribeMatch(matchId, listener) {
       const current = matchListeners.get(matchId) ?? new Set();
@@ -321,12 +322,7 @@ export function normalizeRouteBasePath(basePath: string): string {
 }
 
 export function normalizeRoutePath(path: string): string {
-  const value = path.trim();
-  if (!value) {
-    return "/";
-  }
-  const withSlash = value.startsWith("/") ? value : `/${value}`;
-  return withSlash.length > 1 && withSlash.endsWith("/") ? withSlash.slice(0, -1) : withSlash;
+  return normalizeRouteBasePath(path) || "/";
 }
 
 function pathKey(path: string): string {
@@ -384,8 +380,7 @@ export function compileRoutes<TRouteId extends string, TLoadContext, TModule, TD
       if (!route) {
         throw new Error(`Unknown route id "${routeId}".`);
       }
-      const base = normalizeRouteBasePath(basePath);
-      return base ? `${base}${route.path}` : route.path;
+      return `${normalizeRouteBasePath(basePath)}${route.path}`;
     },
     routeIdFromPath(pathname, basePath = "") {
       const key = pathKey(pathnameWithoutBase(pathname, basePath));
@@ -396,15 +391,11 @@ export function compileRoutes<TRouteId extends string, TLoadContext, TModule, TD
 
 export function locationForPath(path: string): RouteLocation {
   const hashIndex = path.indexOf("#");
-  const searchIndex = path.indexOf("?");
-  const queryStart =
-    searchIndex < 0 ? hashIndex : hashIndex < 0 ? searchIndex : Math.min(searchIndex, hashIndex);
-  const hashStart = hashIndex < 0 ? path.length : hashIndex;
-  const pathnameEnd = queryStart < 0 ? path.length : queryStart;
-  const searchEnd = hashIndex < 0 ? path.length : hashIndex;
+  const beforeHash = hashIndex < 0 ? path : path.slice(0, hashIndex);
+  const searchIndex = beforeHash.indexOf("?");
   return {
-    pathname: normalizeRoutePath(path.slice(0, pathnameEnd)),
-    search: queryStart >= 0 && queryStart < hashStart ? path.slice(queryStart, searchEnd) : "",
-    hash: hashStart < path.length ? path.slice(hashStart) : "",
+    pathname: normalizeRoutePath(searchIndex < 0 ? beforeHash : beforeHash.slice(0, searchIndex)),
+    search: searchIndex < 0 ? "" : beforeHash.slice(searchIndex),
+    hash: hashIndex < 0 ? "" : path.slice(hashIndex),
   };
 }
