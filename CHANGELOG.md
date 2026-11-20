@@ -12,6 +12,8 @@
 
 - Update Vitest to 5.1.0 and tsdown to 0.23.4, align Oxlint ranges, and remove expired TypeScript cooldown exceptions while retaining the two-day policy. Thanks @dependabot[bot].
 
+- Run ClawSweeper dispatch and weekly stale triage on single-CPU Linux runners.
+
 - Keep full weekly CodeQL analysis without duplicate main-push scans, isolate scheduled and manual runs, and analyze PRs when marked ready for review.
 
 - Refresh tsdown, Vitest, and the type-aware lint backend after retiring Node 25 development qualification; preserve the package's exports and runtime engine range.
