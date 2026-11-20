@@ -18,6 +18,8 @@
 
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
+- Cancel a preload superseded by a forced load so its late failure cannot evict fresh data or follow an obsolete redirect.
+
 ### CI
 
 - Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.

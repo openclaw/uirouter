@@ -229,6 +229,10 @@ export function createRouter<
 
     currentRun?.controller.abort();
     const reusable = sameMatch ? previous : cached;
+    const forceLoad = revalidating || Boolean(cached?.invalid);
+    if (forceLoad && reusable?.isFetching) {
+      reusable.abortController.abort();
+    }
     const controller = inFlightAbortController(reusable) ?? new AbortController();
     const cause: RouteLoadCause = revalidating ? "revalidate" : "navigation";
     const match: RouteMatch<TRouteId, TModule, TData> = reusable
@@ -295,7 +299,7 @@ export function createRouter<
           route,
           context,
           hookOptions,
-          revalidating || Boolean(cached?.invalid),
+          forceLoad,
           (module) => {
             if (!hookOptions.shouldRun() || matches.getActiveMatch()?.id === match.id) {
               return;
