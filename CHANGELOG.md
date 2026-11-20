@@ -29,6 +29,8 @@
 - Use Node.js24.22.1 for release tooling to reject the disclosed eMudhra incident keys.
 
 - Update CodeQL to 4.39.0 while preserving the Node 25-compatible build and test toolchain. Thanks @dependabot.
+- Skip allocating a dispatch runner for issue and comment events that fail the existing author checks.
+
 - Run macOS checks on Apple Silicon `xcode-27` runners and support non-publishing release validation on `main`.
 
 - Update oxfmt to 0.73.0 and oxlint to 1.88.0 while retaining the complete Node 25-compatible build toolchain. Thanks @dependabot.
