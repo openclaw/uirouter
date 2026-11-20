@@ -272,14 +272,19 @@ export function createRouter<
         matches.setLocation(location, location);
         matches.setStatus("success");
       });
-    } else if (sameMatch) {
-      matches.updateMatch(match.id, () => match);
     } else {
-      matches.setPending([match]);
+      matches.batch(() => {
+        if (sameMatch) {
+          matches.updateMatch(match.id, () => match);
+        } else {
+          matches.setPending([match]);
+        }
+        matches.setLocation(location, previousLocation);
+        matches.setStatus(backgroundReload ? "success" : "loading");
+      });
     }
-    if (!activatedCachedMatch) {
-      matches.setLocation(location, previousLocation);
-      matches.setStatus(backgroundReload ? "success" : "loading");
+    if (!hookOptions.shouldRun()) {
+      return;
     }
 
     const navigation = (async () => {
@@ -321,14 +326,19 @@ export function createRouter<
             failure = redirectError;
           }
           if (follow) {
-            matches.updateMatch(match.id, (current) => ({
-              ...current,
-              status: "redirected",
-              isFetching: false,
-              error,
-              updatedAt: Date.now(),
-            }));
-            matches.setStatus("redirected");
+            matches.batch(() => {
+              matches.updateMatch(match.id, (current) => ({
+                ...current,
+                status: "redirected",
+                isFetching: false,
+                error,
+                updatedAt: Date.now(),
+              }));
+              matches.setStatus("redirected");
+            });
+            if (!hookOptions.shouldRun()) {
+              return;
+            }
             currentRun = null;
             await handleLocation(error.location, context, false, "replace", follow);
             return;

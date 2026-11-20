@@ -476,6 +476,25 @@ describe("router loading", () => {
     },
   );
 
+  it.each(["pending", "fetching"] as const)(
+    "stays idle when a subscriber stops a %s navigation",
+    async (phase) => {
+      const component = vi.fn(() => "page");
+      const loader = vi.fn(() => "data");
+      const router = createRouter({ routes: [{ id: "page", path: "/page", component, loader }] });
+      const idle = router.getState();
+      router.subscribe(({ pendingMatches: [pending] }) => {
+        if (pending && (phase === "pending" || pending.isFetching)) {
+          router.stop();
+        }
+      });
+      await router.navigate("page", undefined);
+      expect(router.getState()).toEqual(idle);
+      expect(component).not.toHaveBeenCalled();
+      expect(loader).not.toHaveBeenCalled();
+    },
+  );
+
   it("aborts in-flight work and clears route state on stop", async () => {
     const data = deferred<TestData>();
     let signal: AbortSignal | undefined;
