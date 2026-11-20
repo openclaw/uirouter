@@ -8,6 +8,8 @@
 
 ### CI
 
+- Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.
+
 - Refresh the formatter, linter, bundler, Vite, and CodeQL patches while preserving runtime requirements and package exports. Thanks @dependabot.
 
 - Update Vitest to 5.1.0 and tsdown to 0.23.4, align Oxlint ranges, and remove expired TypeScript cooldown exceptions while retaining the two-day policy. Thanks @dependabot[bot].
