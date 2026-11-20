@@ -97,6 +97,29 @@ describe("router loading", () => {
     });
   });
 
+  it("starts a fresh loader when returning to a cancelled match", async () => {
+    const first = deferred<string>();
+    const loader = vi.fn((context: string) => (context === "first" ? first.promise : context));
+    const router = createRouter({
+      routes: [
+        { id: "a", path: "/a", component: () => "a", loader },
+        { id: "b", path: "/b", component: () => "b" },
+      ],
+    });
+    const cancelled = router.navigate("a", "first");
+    await router.navigate("b", "away");
+    const returned = router.navigate("a", "second");
+    first.resolve("obsolete");
+    await Promise.all([cancelled, returned]);
+
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(router.getState()).toMatchObject({
+      status: "success",
+      matches: [{ routeId: "a", status: "success", data: "second" }],
+    });
+    router.stop();
+  });
+
   it("does not let stale async navigation overwrite the current route", async () => {
     const slowData = deferred<TestData>();
     let slowSignal: AbortSignal | undefined;
