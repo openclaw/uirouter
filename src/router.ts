@@ -194,11 +194,12 @@ export function createRouter<
     const sameRoute = previous?.routeId === routeId;
     const matchId = matchIdForLocation(routeId, deps);
     const sameMatch = previous?.id === matchId;
-    const revalidating = navigationOptions.revalidate === true && sameRoute;
+    const revalidating = navigationOptions.revalidate === true;
     const cached = matches.getCachedMatch(matchId);
     const cachedReady =
       !sameMatch && cached?.status === "success" && cached.module !== undefined && !cached.invalid;
-    const cachedFresh = cachedReady && loading.isFresh(cached, route, "navigation");
+    const cachedFresh =
+      !revalidating && cachedReady && loading.isFresh(cached, route, "navigation");
     const backgroundReload =
       sameMatch && revalidating && previous?.status === "success" && previous.module !== undefined
         ? true
@@ -456,10 +457,11 @@ export function createRouter<
       });
       return;
     }
+    const refreshActive = revalidate && matches.getActiveMatch()?.routeId === matched;
     await navigate(
       matched,
       context,
-      { history: historyMode, revalidate },
+      { history: historyMode, revalidate: refreshActive },
       normalized,
       redirectFollow,
     );

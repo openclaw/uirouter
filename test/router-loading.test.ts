@@ -330,6 +330,28 @@ describe("router loading", () => {
     });
   });
 
+  it("refetches a named route even when its cached match is fresh", async () => {
+    const loader = vi.fn((context: string, { cause }: { cause: RouteLoadCause }) => ({
+      context,
+      cause,
+    }));
+    const router = createRouter({
+      staleTime: Infinity,
+      routes: [
+        { id: "chat", path: "/chat", component: () => "chat", loader },
+        { id: "other", path: "/other", component: () => "other" },
+      ],
+    });
+    await router.navigate("chat", "old");
+    await router.navigate("other", "away");
+    await router.revalidate("new", "chat");
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(router.getState().matches).toMatchObject([
+      { routeId: "chat", data: { context: "new", cause: "revalidate" } },
+    ]);
+    router.stop();
+  });
+
   it("keys route identity by loader dependencies", async () => {
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({
       routes: [
