@@ -8,6 +8,8 @@
 
 - Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.
 
+- Detach a history listener when a subscriber stops or restarts the router during synchronous location replay.
+
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
 - Keep a restarted router’s cached component when an import from before stop rejects.

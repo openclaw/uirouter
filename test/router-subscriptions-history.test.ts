@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRouter } from "../src/index";
+import { createRouter, type RouteLocation } from "../src/index";
 import { createMemoryHistory, location } from "./fixtures";
 
 function createTestRouter() {
@@ -173,6 +173,42 @@ describe("router history", () => {
     expect(router.getState().matches[0]?.data).toEqual({ label: "restarted", route: "settings" });
     router.stop();
   });
+
+  it.each(["stop", "restart"] as const)(
+    "honors %s during synchronous history replay",
+    async (action) => {
+      const router = createTestRouter();
+      const history = createMemoryHistory(location("/chat"));
+      const listeners = new Set<(value: RouteLocation) => void>();
+      history.listen = (listener) => {
+        listeners.add(listener);
+        listener(history.location());
+        return () => listeners.delete(listener);
+      };
+      let restart: Promise<void> | undefined;
+      router.subscribeSelector(
+        (state) => state.status,
+        (status) => {
+          if (status === "loading") {
+            router.stop();
+            if (action === "restart") {
+              restart = router.start(history, "", { label: "replacement" });
+            }
+          }
+        },
+      );
+
+      await router.start(history, "", { label: "original" });
+      await restart;
+      if (action === "restart") {
+        expect(listeners.size).toBe(1);
+        expect(router.getState().matches[0]?.data?.label).toBe("replacement");
+        router.stop();
+      }
+      expect(router.getState().status).toBe("idle");
+      expect(listeners.size).toBe(0);
+    },
+  );
 
   it("stores a new start context even when the initial location is unmatched", async () => {
     const router = createTestRouter();
