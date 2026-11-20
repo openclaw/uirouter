@@ -143,7 +143,9 @@ The same defaults can be set router-wide via `createRouter({ staleTime, defaultS
 ## Redirects and not-found
 
 Loaders signal control flow by **throwing** the result of `redirect()` or
-`notFound()`. Returning them works too; the router treats both equivalently.
+`notFound()`. Returning them works too; the router treats both equivalently. A returned object with
+`type: "redirect"` is a control result when its `location` contains string
+`pathname`, `search`, and `hash` fields. Other redirect-shaped records are loader data.
 
 ```ts
 import { definePage, notFound, redirect } from "@openclaw/uirouter";
