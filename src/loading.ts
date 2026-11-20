@@ -61,10 +61,6 @@ function isRouteControl(value: unknown): value is RouteNotFound | RouteRedirect 
   );
 }
 
-function now(): number {
-  return Date.now();
-}
-
 // Host timers coerce delays outside signed 32-bit to 1ms.
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
@@ -91,7 +87,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
   ) =>
     match.status === "success" &&
     !match.invalid &&
-    (!route.loader || now() - match.updatedAt < freshTimeFor(match, route, cause));
+    (!route.loader || Date.now() - match.updatedAt < freshTimeFor(match, route, cause));
 
   const scheduleGc = (
     match: RouteMatch<TRouteId, TModule, TData>,
@@ -108,7 +104,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       }
       return;
     }
-    const remaining = gcTime - (now() - match.updatedAt);
+    const remaining = gcTime - (Date.now() - match.updatedAt);
     if (!matchStore.getCachedMatch(match.id) || remaining <= 0) {
       if (remaining <= 0) {
         matchStore.removeCached(match.id);
@@ -127,7 +123,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
         gcTimers.delete(match.id);
         return;
       }
-      if (now() - current.updatedAt < gcTime) {
+      if (Date.now() - current.updatedAt < gcTime) {
         scheduleGc(current, route);
         return;
       }
@@ -179,7 +175,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       if (isRouteControl(data)) {
         throw data;
       }
-      return { data, updatedAt: now() };
+      return { data, updatedAt: Date.now() };
     });
   };
 
@@ -202,11 +198,12 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       isFetching: "loader",
       fetchCount,
     }));
+    const isCurrentFetch = (matchId: string) =>
+      matchStore.getMatch(matchId)?.fetchCount === fetchCount && !hookOptions.signal.aborted;
     const dataPromise = loadData(current, route, context, hookOptions, force);
     const modulePromise = loadModule(route, current);
     const visibleModulePromise = modulePromise.then((module) => {
-      const latest = matchStore.getMatch(current.id);
-      if (latest?.fetchCount === fetchCount && !hookOptions.signal.aborted) {
+      if (isCurrentFetch(current.id)) {
         matchStore.updateMatch(current.id, (next) => ({ ...next, module }));
         onComponentLoaded?.(module);
       }
@@ -214,8 +211,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     });
     const promise = Promise.all([dataPromise, visibleModulePromise]).then(
       ([dataResult, module]) => {
-        const latest = matchStore.getMatch(current.id);
-        if (latest?.fetchCount !== fetchCount || hookOptions.signal.aborted) {
+        if (!isCurrentFetch(current.id)) {
           return { data: dataResult.data, module };
         }
         matchStore.updateMatch(current.id, (next) => ({
@@ -240,14 +236,13 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     try {
       return await promise;
     } catch (error) {
-      const latest = matchStore.getMatch(match.id);
-      if (latest?.fetchCount === fetchCount && !hookOptions.signal.aborted) {
+      if (isCurrentFetch(match.id)) {
         matchStore.updateMatch(match.id, (next) => ({
           ...next,
           status: "error",
           isFetching: false,
           error,
-          updatedAt: now(),
+          updatedAt: Date.now(),
         }));
       }
       throw error;
