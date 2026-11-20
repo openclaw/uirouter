@@ -73,6 +73,30 @@ function expectSecondChatMatch(
   expect(router.getState().matches[0]?.id).not.toBe(firstMatchId);
 }
 
+it.each([false, true])(
+  "preserves the resolved location while navigation is pending (started: %s)",
+  async (started) => {
+    const { router, history, finishLoader, finishComponent } = createPendingDestination();
+    if (started) {
+      await router.start(history, "", "ctx");
+    }
+    const resolved = router.getState().resolvedLocation;
+    const navigation = router.navigate("b", "ctx");
+    expect(router.getState().resolvedLocation).toBe(resolved);
+
+    const latest = location("/b", "?joined", "#entry");
+    const joined = router.navigate("b", "ctx", {}, latest);
+    expect(router.getState().location).toEqual(latest);
+    expect(router.getState().resolvedLocation).toBe(resolved);
+
+    finishComponent();
+    finishLoader();
+    await Promise.all([navigation, joined]);
+    expect(router.getState().resolvedLocation).toEqual(latest);
+    router.stop();
+  },
+);
+
 describe("invalidate during a pending navigation", () => {
   it.each(["invalidate", "revalidate"] as const)(
     "lets a pending route finish during untargeted %s",

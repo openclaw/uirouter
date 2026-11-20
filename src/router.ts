@@ -212,7 +212,7 @@ export function createRouter<
     const ongoing = currentRun;
     if (ongoing?.matchId === matchId && ongoing.promise && !ongoing.controller.signal.aborted) {
       matches.updateMatch(matchId, (current) => ({ ...current, location }));
-      matches.setLocation(location, matches.getState().resolvedLocation);
+      matches.setLocation(location);
       ongoing.location = location;
       return ongoing.promise;
     }
@@ -267,7 +267,6 @@ export function createRouter<
       deps,
       cause,
     };
-    const previousLocation = matches.getState().resolvedLocation;
 
     if (activatedCachedMatch) {
       matches.batch(() => {
@@ -284,7 +283,7 @@ export function createRouter<
         } else {
           matches.setPending(match);
         }
-        matches.setLocation(location, previousLocation);
+        matches.setLocation(location);
         matches.setStatus(backgroundReload ? "success" : "loading");
       });
     }
