@@ -328,10 +328,20 @@ export function normalizeRoutePath(path: string): string {
   return normalizeRouteBasePath(path) || "/";
 }
 
+function withoutTrailingSlashes(path: string): string {
+  let end = path.length;
+  while (path[end - 1] === "/") {
+    end--;
+  }
+  return path.slice(0, end);
+}
+
 function pathKey(path: string): string {
-  const normalized = normalizeRoutePath(path).toLowerCase();
-  // URL matching ignores trailing separators and the terminal index document.
-  return normalized.replace(/\/+(?:index\.html\/*)?$/u, "") || "/";
+  const normalized = withoutTrailingSlashes(normalizeRoutePath(path).toLowerCase());
+  const key = normalized.endsWith("/index.html")
+    ? withoutTrailingSlashes(normalized.slice(0, -"/index.html".length))
+    : normalized;
+  return key || "/";
 }
 
 export function normalizeLocation(location: RouteLocation): RouteLocation {
