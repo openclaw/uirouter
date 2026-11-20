@@ -10,6 +10,8 @@
 
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
 
+- Force a fresh load when revalidating a named route that is still fresh in the cache.
+
 ### CI
 
 - Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.

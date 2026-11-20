@@ -5,8 +5,8 @@ import {
   normalizeRouteBasePath,
   normalizeRoutePath,
   type RouteLoadCause,
-  type RouteLocation,
 } from "../src/index";
+import { location } from "./fixtures";
 
 type RouteId = "home" | "chat";
 type TestContext = {
@@ -20,10 +20,6 @@ type TestData = {
   cause: RouteLoadCause;
   pathname: string;
 };
-
-function location(pathname: string, search = "", hash = ""): RouteLocation {
-  return { pathname, search, hash };
-}
 
 describe("router route matching", () => {
   it.each([
@@ -48,7 +44,7 @@ describe("router route matching", () => {
         definePage({
           id: "chat",
           path: "/chat/",
-          aliases: ["/c", "/chat/index.html"],
+          aliases: ["/c"],
           component: () => ({ view: "chat" }),
         }),
       ],

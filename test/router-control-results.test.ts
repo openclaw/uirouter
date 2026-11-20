@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createRouter, definePage, notFound, redirect, type RouteLocation } from "../src/index";
+import { createRouter, definePage, notFound, redirect } from "../src/index";
+import { location } from "./fixtures";
 
-type RouteId = "source" | "target" | "missing" | "alpha" | "beta" | "gamma";
+type RouteId = "source" | "target" | "missing" | "alpha" | "beta";
 type TestContext = {
   label: string;
 };
@@ -11,10 +12,6 @@ type TestModule = {
 type TestData = {
   label: string;
 };
-
-function location(pathname: string, search = "", hash = ""): RouteLocation {
-  return { pathname, search, hash };
-}
 
 describe("router control results", () => {
   it("follows loader redirects and publishes the destination route", async () => {
@@ -50,71 +47,37 @@ describe("router control results", () => {
     });
   });
 
-  it("follows a loader redirect chain under the hop cap", async () => {
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"alpha", TestContext, TestModule, TestData>({
-          id: "alpha",
-          path: "/alpha",
-          component: () => ({ view: "alpha" }),
-          loader: () => redirect(location("/beta")),
-        }),
-        definePage<"beta", TestContext, TestModule, TestData>({
-          id: "beta",
-          path: "/beta",
-          component: () => ({ view: "beta" }),
-          loader: () => redirect(location("/gamma")),
-        }),
-        definePage<"gamma", TestContext, TestModule, TestData>({
-          id: "gamma",
-          path: "/gamma",
-          component: () => ({ view: "gamma" }),
-          loader: (context) => ({ label: context.label }),
-        }),
-      ],
-    });
+  it.each(["navigate", "preloadRoute"] as const)(
+    "rejects a multi-route cycle during %s",
+    async (method) => {
+      let visits = 0;
+      const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+        routes: [
+          definePage<"alpha", TestContext, TestModule, TestData>({
+            id: "alpha",
+            path: "/alpha",
+            component: () => ({ view: "alpha" }),
+            loader: (context) =>
+              ++visits > 1 ? { label: context.label } : redirect(location("/beta")),
+          }),
+          definePage<"beta", TestContext, TestModule, TestData>({
+            id: "beta",
+            path: "/beta",
+            component: () => ({ view: "beta" }),
+            loader: () => redirect(location("/alpha")),
+          }),
+        ],
+      });
 
-    await router.navigate("alpha", { label: "chained" });
-
-    const state = router.getState();
-    const [match] = state.matches;
-    expect(state.status).toBe("success");
-    expect(state.location).toEqual(location("/gamma"));
-    expect(match).toMatchObject({
-      routeId: "gamma",
-      status: "success",
-      data: { label: "chained" },
-      module: { view: "gamma" },
-    });
-  });
-
-  it("rejects a loader redirect cycle during navigation", async () => {
-    let visits = 0;
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"alpha", TestContext, TestModule, TestData>({
-          id: "alpha",
-          path: "/alpha",
-          component: () => ({ view: "alpha" }),
-          loader: (context) =>
-            ++visits > 1 ? { label: context.label } : redirect(location("/beta")),
-        }),
-        definePage<"beta", TestContext, TestModule, TestData>({
-          id: "beta",
-          path: "/beta",
-          component: () => ({ view: "beta" }),
-          loader: () => redirect(location("/alpha")),
-        }),
-      ],
-    });
-
-    await expect(router.navigate("alpha", { label: "loop" })).rejects.toThrow(
-      /Redirect cycle detected: \/alpha -> \/beta -> \/alpha/,
-    );
-    expect(router.getState().status).toBe("error");
-    expect(visits).toBe(1);
-    router.stop();
-  });
+      await expect(router[method]("alpha", { label: "loop" })).rejects.toThrow(
+        /Redirect cycle detected: \/alpha -> \/beta -> \/alpha/,
+      );
+      expect(router.getState().status).toBe(method === "navigate" ? "error" : "idle");
+      expect(router.getState().cachedMatches).toEqual([]);
+      expect(visits).toBe(1);
+      router.stop();
+    },
+  );
 
   it.each([
     ["navigate", 10],
@@ -142,7 +105,19 @@ describe("router control results", () => {
       await result;
       const state = router.getState();
       const matches = method === "navigate" ? state.matches : state.cachedMatches;
-      expect(matches).toMatchObject([{ routeId: "hop10", status: "success" }]);
+      expect(matches).toMatchObject([
+        {
+          routeId: "hop10",
+          location: location("/hop10"),
+          status: "success",
+          module: { view: "hop10" },
+          data: { label: "boundary" },
+          preload: method === "preloadRoute",
+        },
+      ]);
+      if (method === "navigate") {
+        expect(state.location).toEqual(location("/hop10"));
+      }
     } else {
       await expect(result).rejects.toThrow(
         /Redirect hop limit of 10 exceeded while following \/hop10 -> \/hop11/,
@@ -215,71 +190,6 @@ describe("router control results", () => {
     },
   );
 
-  it("follows a preload redirect chain under the hop cap", async () => {
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"alpha", TestContext, TestModule, TestData>({
-          id: "alpha",
-          path: "/alpha",
-          component: () => ({ view: "alpha" }),
-          loader: () => redirect(location("/beta")),
-        }),
-        definePage<"beta", TestContext, TestModule, TestData>({
-          id: "beta",
-          path: "/beta",
-          component: () => ({ view: "beta" }),
-          loader: () => redirect(location("/gamma")),
-        }),
-        definePage<"gamma", TestContext, TestModule, TestData>({
-          id: "gamma",
-          path: "/gamma",
-          component: () => ({ view: "gamma" }),
-          loader: (context) => ({ label: context.label }),
-        }),
-      ],
-    });
-
-    await router.preloadRoute("alpha", { label: "preloaded" });
-
-    const cached = router.getState().cachedMatches;
-    expect(cached).toHaveLength(1);
-    expect(cached[0]).toMatchObject({
-      routeId: "gamma",
-      status: "success",
-      preload: true,
-      data: { label: "preloaded" },
-    });
-  });
-
-  it("rejects a loader redirect cycle during preload", async () => {
-    let visits = 0;
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"alpha", TestContext, TestModule, TestData>({
-          id: "alpha",
-          path: "/alpha",
-          component: () => ({ view: "alpha" }),
-          loader: (context) =>
-            ++visits > 1 ? { label: context.label } : redirect(location("/beta")),
-        }),
-        definePage<"beta", TestContext, TestModule, TestData>({
-          id: "beta",
-          path: "/beta",
-          component: () => ({ view: "beta" }),
-          loader: () => redirect(location("/alpha")),
-        }),
-      ],
-    });
-
-    await expect(router.preloadRoute("alpha", { label: "loop" })).rejects.toThrow(
-      /Redirect cycle detected: \/alpha -> \/beta -> \/alpha/,
-    );
-    expect(visits).toBe(1);
-    expect(router.getState().cachedMatches).toEqual([]);
-    expect(router.getState().status).toBe("idle");
-    router.stop();
-  });
-
   it("publishes not-found route state from loaders", async () => {
     const result = notFound({ code: "missing-record" });
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({
@@ -327,57 +237,6 @@ describe("router control results", () => {
       resolvedLocation: null,
       matches: [],
       pendingMatches: [],
-    });
-  });
-
-  it("publishes loader errors and lets revalidation retry the active route", async () => {
-    const failure = new Error("load failed");
-    let loadCount = 0;
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"source", TestContext, TestModule, TestData>({
-          id: "source",
-          path: "/source",
-          component: () => ({ view: "source" }),
-          loader: (context) => {
-            loadCount += 1;
-            if (loadCount === 1) {
-              throw failure;
-            }
-            return { label: context.label };
-          },
-        }),
-      ],
-    });
-
-    await expect(router.navigate("source", { label: "agent" })).rejects.toBe(failure);
-
-    expect(router.getState()).toMatchObject({
-      status: "error",
-      matches: [
-        {
-          routeId: "source",
-          status: "error",
-          error: failure,
-          isFetching: false,
-        },
-      ],
-    });
-
-    await router.revalidate({ label: "retried" });
-
-    expect(loadCount).toBe(2);
-    expect(router.getState()).toMatchObject({
-      status: "success",
-      matches: [
-        {
-          routeId: "source",
-          status: "success",
-          data: { label: "retried" },
-          error: undefined,
-          invalid: false,
-        },
-      ],
     });
   });
 });

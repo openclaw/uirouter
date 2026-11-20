@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRouter, definePage, type RouteLocation, type RouterHistory } from "../src/index";
+import { createRouter, definePage } from "../src/index";
+import { createMemoryHistory, location } from "./fixtures";
 
 type RouteId = "chat" | "settings";
 type TestContext = {
@@ -12,46 +13,6 @@ type TestData = {
   label: string;
   route: RouteId;
 };
-type HistoryOperation = {
-  type: "push" | "replace";
-  location: RouteLocation;
-};
-type MemoryHistory = RouterHistory & {
-  operations: HistoryOperation[];
-  emit: (location: RouteLocation) => void;
-};
-
-function location(pathname: string, search = "", hash = ""): RouteLocation {
-  return { pathname, search, hash };
-}
-
-function createMemoryHistory(initial: RouteLocation): MemoryHistory {
-  let current = initial;
-  const listeners = new Set<(location: RouteLocation) => void>();
-  const operations: HistoryOperation[] = [];
-  return {
-    operations,
-    location: () => current,
-    push(nextLocation) {
-      current = nextLocation;
-      operations.push({ type: "push", location: nextLocation });
-    },
-    replace(nextLocation) {
-      current = nextLocation;
-      operations.push({ type: "replace", location: nextLocation });
-    },
-    listen(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    emit(nextLocation) {
-      current = nextLocation;
-      for (const listener of listeners) {
-        listener(nextLocation);
-      }
-    },
-  };
-}
 
 function createTestRouter() {
   return createRouter<RouteId, TestContext, TestModule, TestData>({
@@ -72,16 +33,6 @@ function createTestRouter() {
   });
 }
 
-async function waitFor(predicate: () => boolean): Promise<void> {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    if (predicate()) {
-      return;
-    }
-    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0));
-  }
-  throw new Error("condition was not met");
-}
-
 describe("router subscriptions", () => {
   it("notifies subscribers and selector subscribers for state changes", async () => {
     const router = createTestRouter();
@@ -98,6 +49,9 @@ describe("router subscriptions", () => {
     expect(unsubscribeSelector()).toBe(true);
     await router.navigate("settings", { label: "agent" });
     expect(unsubscribeState()).toBe(true);
+    const count = statuses.length;
+    await router.navigate("chat", { label: "again" });
+    expect(statuses).toHaveLength(count);
 
     expect(statuses).toContain("loading");
     expect(statuses).toContain("success");
@@ -105,36 +59,24 @@ describe("router subscriptions", () => {
   });
 
   it("notifies match subscribers for the selected match only", async () => {
-    let loadCount = 0;
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"chat", TestContext, TestModule, TestData>({
-          id: "chat",
-          path: "/chat",
-          component: () => ({ view: "chat" }),
-          loader: (context) => {
-            loadCount += 1;
-            return { label: `${context.label}:${loadCount}`, route: "chat" };
-          },
-        }),
-      ],
-    });
-    await router.navigate("chat", { label: "agent" });
-    const matchId = router.getState().matches[0]?.id;
-    if (!matchId) {
-      throw new Error("expected active match");
-    }
-
+    const router = createTestRouter();
+    await router.navigate("chat", { label: "first" });
+    const matchId = router.getState().matches[0].id;
     const updates: string[] = [];
     const unsubscribe = router.subscribeMatch(matchId, (match) => {
       updates.push(`${match?.status}:${match?.isFetching}:${match?.data?.label}`);
     });
 
-    await router.invalidate("chat");
+    await router.preloadRoute("settings", { label: "other" });
+    expect(updates).toEqual([]);
+    await router.revalidate({ label: "second" });
     expect(unsubscribe()).toBe(true);
+    const count = updates.length;
+    await router.invalidate("chat");
+    expect(updates).toHaveLength(count);
 
-    expect(updates).toContain("success:loader:agent:1");
-    expect(updates.at(-1)).toBe("success:false:agent:2");
+    expect(updates).toContain("success:loader:first");
+    expect(updates.at(-1)).toBe("success:false:second");
   });
 });
 
@@ -189,28 +131,15 @@ describe("router history", () => {
     expect(router.getState().matches[0]?.routeId).toBe("chat");
   });
 
-  it("loads a new route when the history listener reports a location change", async () => {
-    const router = createTestRouter();
-    const history = createMemoryHistory(location("/chat"));
-
-    await router.start(history, "", { label: "agent" });
-    history.emit(location("/settings", "?tab=tools"));
-    await waitFor(() => router.getState().status === "success");
-
-    const state = router.getState();
-    expect(state.status).toBe("success");
-    expect(state.location).toEqual(location("/settings", "?tab=tools"));
-    expect(state.matches[0]?.routeId).toBe("settings");
-  });
-
   it("loads history navigations with the latest context, not the start context", async () => {
     const router = createTestRouter();
     const history = createMemoryHistory(location("/chat"));
 
     await router.start(history, "", { label: "u_1" });
     await router.navigate("chat", { label: "u_2" });
-    history.emit(location("/settings"));
-    await waitFor(() => router.getState().matches[0]?.routeId === "settings");
+    history.emit(location("/settings", "?tab=tools"));
+    await expect.poll(() => router.getState().status).toBe("success");
+    expect(router.getState().location).toEqual(location("/settings", "?tab=tools"));
 
     expect(router.getState().status).toBe("success");
     expect(router.getState().matches[0]?.data).toEqual({ label: "u_2", route: "settings" });
@@ -240,7 +169,7 @@ describe("router history", () => {
     await router.start(history, "", { label: "restarted" });
 
     history.emit(location("/settings"));
-    await waitFor(() => router.getState().status === "success");
+    await expect.poll(() => router.getState().status).toBe("success");
 
     expect(router.getState().matches[0]?.data).toEqual({ label: "restarted", route: "settings" });
     router.stop();
@@ -255,7 +184,7 @@ describe("router history", () => {
 
       await router[method](location("/missing"), { label: "current" });
       history.emit(location("/settings"));
-      await waitFor(() => router.getState().status === "success");
+      await expect.poll(() => router.getState().status).toBe("success");
 
       expect(router.getState().matches[0]?.data).toEqual({ label: "current", route: "settings" });
       router.stop();

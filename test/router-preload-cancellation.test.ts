@@ -1,14 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRouter, redirect } from "../src/index";
+import { deferred } from "./fixtures";
 
 describe("preload cancellation", () => {
   it.each(["returned redirect", "thrown redirect", "error"])(
     "ignores a late %s after stop without deleting a replacement preload",
     async (outcome) => {
-      let finish!: () => void;
-      const pending = new Promise<void>((resolve) => {
-        finish = resolve;
-      });
+      const { promise: pending, resolve: finish } = deferred<void>();
       const targetLoader = vi.fn(() => "target");
       let signal: AbortSignal | undefined;
       const router = createRouter<"source" | "target", string, string, string>({
