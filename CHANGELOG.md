@@ -42,6 +42,8 @@
 
 - Qualify patched Node 26.12.1 in place of Node 25 for development and retire its dependency-update restrictions. Preserve the published JavaScript engine range and Node 22/24 qualification. Thanks @joshavant.
 
+- Cancel outstanding PR matrix jobs after the first package check fails. Main and manual runs report every platform.
+
 - Split macOS and Windows checks between Node 24 on pull requests and Node 22 on main. Manual runs cover both versions.
 
 - Pin Node 22/24 CI checks to 22.23.4/24.22.1 while retaining Node 25 compatibility coverage.
