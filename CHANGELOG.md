@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Clear a preload retention timer when the cached match expires immediately, including on stop.
+
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
 
 - Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.

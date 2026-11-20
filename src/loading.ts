@@ -75,6 +75,10 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     const remaining = gcTime - (Date.now() - match.updatedAt);
     if (!matchStore.getCachedMatch(match.id) || remaining <= 0) {
       if (remaining <= 0) {
+        const previousTimer = gcTimers.get(match.id);
+        if (previousTimer) {
+          globalThis.clearTimeout(previousTimer);
+        }
         matchStore.removeCached(match.id);
         gcTimers.delete(match.id);
       }
@@ -88,7 +92,9 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     const timer = globalThis.setTimeout(() => {
       const current = matchStore.getCachedMatch(match.id);
       if (!current) {
-        gcTimers.delete(match.id);
+        if (gcTimers.get(match.id) === timer) {
+          gcTimers.delete(match.id);
+        }
         return;
       }
       if (Date.now() - current.updatedAt < gcTime) {

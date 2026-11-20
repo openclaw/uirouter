@@ -410,6 +410,26 @@ describe("router loading", () => {
     });
   });
 
+  it("clears a preload timer when immediate cache expiry drops the match", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const router = createRouter({
+      gcTime: 0,
+      preloadGcTime: 60_000,
+      routes: [
+        { id: "chat", path: "/chat", component: () => "chat", loader: () => "data" },
+        { id: "other", path: "/other", component: () => "other" },
+      ],
+    });
+
+    await router.preloadRoute("chat", undefined);
+    await router.navigate("chat", undefined);
+    await router.navigate("other", undefined);
+    expect(router.getState().cachedMatches).toEqual([]);
+    router.stop();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("garbage-collects expired cached preload matches", async () => {
     vi.useFakeTimers();
     const router = createRouter({
