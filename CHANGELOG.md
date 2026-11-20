@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Force a fresh load when revalidating a named route that is still fresh in the cache.
+
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
 
 ### CI
