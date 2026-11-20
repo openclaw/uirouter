@@ -6,17 +6,25 @@
 
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
 
-- Allow preloading a cached route again after navigating away during revalidation.
+- Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.
 
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
 - Release state, selector, and match subscriptions on stop so listeners from a previous session do not receive updates after restart.
 
+- Keep the router idle and skip further loads when a subscriber stops a pending or redirecting navigation.
+
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
 
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
+- Cancel a preload superseded by a forced load so its late failure cannot evict fresh data or follow an obsolete redirect.
+
+- Allow preloading a cached route again after navigating away during revalidation.
+
 ### CI
+
+- Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.
 
 - Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.
 
@@ -24,15 +32,21 @@
 
 - Reuse the previous pnpm store for each OS and architecture when a dependency update changes the lockfile.
 
+- Pin development to pnpm 11.28.10, the version the CI setup action installs during bootstrap.
+
 - Update Vitest to 5.1.0 and tsdown to 0.23.4, align Oxlint ranges, and remove expired TypeScript cooldown exceptions while retaining the two-day policy. Thanks @dependabot[bot].
 
 - Run ClawSweeper dispatch and weekly stale triage on single-CPU Linux runners.
+
+- Prioritize the latest main commit when merges overlap and let manual CI finish independently.
 
 - Keep full weekly CodeQL analysis without duplicate main-push scans, isolate scheduled and manual runs, and analyze PRs when marked ready for review.
 
 - Refresh tsdown, Vitest, and the type-aware lint backend after retiring Node 25 development qualification; preserve the package's exports and runtime engine range.
 
 - Qualify patched Node 26.12.1 in place of Node 25 for development and retire its dependency-update restrictions. Preserve the published JavaScript engine range and Node 22/24 qualification. Thanks @joshavant.
+
+- Cancel outstanding PR matrix jobs after the first package check fails. Main and manual runs report every platform.
 
 - Split macOS and Windows checks between Node 24 on pull requests and Node 22 on main. Manual runs cover both versions.
 
