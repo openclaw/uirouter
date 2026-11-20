@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRouter, definePage, notFound, redirect } from "../src/index";
-import { location } from "./fixtures";
+import { createMemoryHistory, location } from "./fixtures";
 
 type RouteId = "source" | "target" | "missing" | "alpha" | "beta";
 type TestContext = {
@@ -36,37 +36,45 @@ describe("router control results", () => {
     expect(target).not.toHaveBeenCalled();
   });
 
-  it("follows loader redirects and publishes the destination route", async () => {
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+  it.each(["/target", "/missing"])("replaces history on redirect to %s", async (path) => {
+    const destination = location(path, "?from=source", "#detail");
+    const history = createMemoryHistory(location("/"));
+    const router = createRouter({
       routes: [
-        definePage<"source", TestContext, TestModule, TestData>({
+        {
           id: "source",
           path: "/source",
-          component: () => ({ view: "source" }),
-          loader: () => redirect(location("/target", "?from=source")),
-        }),
-        definePage<"target", TestContext, TestModule, TestData>({
+          component: () => "source",
+          loader: () => redirect(destination),
+        },
+        {
           id: "target",
           path: "/target",
-          component: () => ({ view: "target" }),
-          loader: (context) => ({ label: context.label }),
-        }),
+          component: () => "target",
+          loader: (context: string) => context,
+        },
       ],
     });
+    await router.start(history, "", "initial");
+    await router.navigate("source", "redirected", { history: "push" });
 
-    await router.navigate("source", { label: "redirected" });
-
+    expect(history.operations).toEqual([
+      { type: "push", location: location("/source") },
+      { type: "replace", location: destination },
+    ]);
+    expect(history.location()).toEqual(destination);
     const state = router.getState();
-    const [match] = state.matches;
-    expect(state.status).toBe("success");
-    expect(state.location).toEqual(location("/target", "?from=source"));
-    expect(state.resolvedLocation).toEqual(location("/target", "?from=source"));
-    expect(match).toMatchObject({
-      routeId: "target",
-      status: "success",
-      data: { label: "redirected" },
-      module: { view: "target" },
-    });
+    expect(state.location).toEqual(destination);
+    if (path === "/target") {
+      expect(state).toMatchObject({
+        status: "success",
+        resolvedLocation: destination,
+        matches: [{ routeId: "target", status: "success", data: "redirected", module: "target" }],
+      });
+    } else {
+      expect(state).toMatchObject({ status: "notFound", resolvedLocation: null, matches: [] });
+    }
+    router.stop();
   });
 
   it.each(["navigate", "preloadRoute"] as const)(
@@ -208,6 +216,33 @@ describe("router control results", () => {
       expect(matches).toMatchObject([
         { location: location("/source", "?step=1", "#done"), status: "success", data: "done" },
       ]);
+      router.stop();
+    },
+  );
+
+  it.each([{ type: "redirect" }, { type: "redirect", location: "/archive" }])(
+    "preserves %j as loader data and as a thrown error",
+    async (record) => {
+      const router = createRouter({
+        routes: [
+          {
+            id: "log",
+            path: "/log",
+            component: () => "log",
+            loader: (fail: boolean) => {
+              if (fail) {
+                throw record;
+              }
+              return record;
+            },
+          },
+        ],
+      });
+      await router.navigate("log", false);
+      expect(router.getState().status).toBe("success");
+      expect(router.getState().matches[0].data).toBe(record);
+      await expect(router.revalidate(true)).rejects.toBe(record);
+      expect(router.getState().status).toBe("error");
       router.stop();
     },
   );

@@ -39,6 +39,36 @@ export function redirect(location: RouteLocation): RouteRedirect {
   return { type: "redirect", location };
 }
 
+export function isRouteNotFound(error: unknown): error is RouteNotFound {
+  return (
+    typeof error === "object" && error !== null && "type" in error && error.type === "notFound"
+  );
+}
+
+export function isRouteRedirect(error: unknown): error is RouteRedirect {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "type" in error &&
+    error.type === "redirect" &&
+    "location" in error &&
+    isRouteLocation(error.location)
+  );
+}
+
+function isRouteLocation(value: unknown): value is RouteLocation {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "pathname" in value &&
+    typeof value.pathname === "string" &&
+    "search" in value &&
+    typeof value.search === "string" &&
+    "hash" in value &&
+    typeof value.hash === "string"
+  );
+}
+
 export type RouteHookOptions = {
   signal: AbortSignal;
   shouldRun: () => boolean;

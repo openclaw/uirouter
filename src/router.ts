@@ -7,17 +7,17 @@ import {
   matchIdForLocation,
   normalizeLocation,
 } from "./matches";
-import type {
-  RouteHookOptions,
-  RouteLocation,
-  RouteLoadCause,
-  RouteMatch,
-  RouteNotFound,
-  RouteRedirect,
-  Router,
-  RouterHistory,
-  RouterNavigationOptions,
-  RouterOptions,
+import {
+  isRouteNotFound,
+  isRouteRedirect,
+  type RouteHookOptions,
+  type RouteLocation,
+  type RouteLoadCause,
+  type RouteMatch,
+  type Router,
+  type RouterHistory,
+  type RouterNavigationOptions,
+  type RouterOptions,
 } from "./types";
 
 type NavigationRun = {
@@ -73,36 +73,6 @@ function inFlightAbortController<TRouteId extends string, TModule, TData>(
   return match.abortController;
 }
 
-function isRouteNotFound(error: unknown): error is RouteNotFound {
-  return (
-    typeof error === "object" && error !== null && "type" in error && error.type === "notFound"
-  );
-}
-
-function isRouteRedirect(error: unknown): error is RouteRedirect {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "type" in error &&
-    error.type === "redirect" &&
-    "location" in error &&
-    isRouteLocation(error.location)
-  );
-}
-
-function isRouteLocation(value: unknown): value is RouteLocation {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "pathname" in value &&
-    typeof value.pathname === "string" &&
-    "search" in value &&
-    typeof value.search === "string" &&
-    "hash" in value &&
-    typeof value.hash === "string"
-  );
-}
-
 export function createRouter<
   TRouteId extends string,
   TLoadContext = unknown,
@@ -131,6 +101,12 @@ export function createRouter<
 
   const locationForRoute = (routeId: TRouteId) =>
     locationForPath(compiled.pathForRoute(routeId, basePath));
+
+  const writeHistory = (location: RouteLocation, mode: RouterNavigationOptions["history"]) => {
+    if (mode && mode !== "none") {
+      history?.[mode](location);
+    }
+  };
 
   const cancelCurrentRun = () => {
     currentRun?.controller.abort();
@@ -205,9 +181,7 @@ export function createRouter<
         ? true
         : cachedReady && !cachedFresh && loading.shouldReloadInBackground(route);
 
-    if (history && navigationOptions.history && navigationOptions.history !== "none") {
-      history[navigationOptions.history](location);
-    }
+    writeHistory(location, navigationOptions.history);
 
     const ongoing = currentRun;
     if (ongoing?.matchId === matchId && ongoing.promise && !ongoing.controller.signal.aborted) {
@@ -462,6 +436,7 @@ export function createRouter<
     const normalized = normalizeLocation(location);
     const matched = compiled.routeIdFromPath(normalized.pathname, basePath);
     if (matched === null) {
+      writeHistory(normalized, historyMode);
       cancelCurrentRun();
       matches.batch(() => {
         matches.setActive();
