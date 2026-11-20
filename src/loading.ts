@@ -201,6 +201,8 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       isFetching: "loader",
       fetchCount,
     }));
+    // A subscriber can stop the router while observing the fetch above.
+    hookOptions.signal.throwIfAborted();
     const isCurrentFetch = (matchId: string) =>
       matchStore.getMatch(matchId)?.fetchCount === fetchCount && !hookOptions.signal.aborted;
     const dataPromise = loadData(current, route, context, hookOptions, force);

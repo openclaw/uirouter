@@ -273,14 +273,19 @@ export function createRouter<
         matches.setLocation(location, location);
         matches.setStatus("success");
       });
-    } else if (sameMatch) {
-      matches.updateMatch(match.id, () => match);
     } else {
-      matches.setPending([match]);
+      matches.batch(() => {
+        if (sameMatch) {
+          matches.updateMatch(match.id, () => match);
+        } else {
+          matches.setPending([match]);
+        }
+        matches.setLocation(location, previousLocation);
+        matches.setStatus(backgroundReload ? "success" : "loading");
+      });
     }
-    if (!activatedCachedMatch) {
-      matches.setLocation(location, previousLocation);
-      matches.setStatus(backgroundReload ? "success" : "loading");
+    if (!hookOptions.shouldRun()) {
+      return;
     }
 
     const navigation = (async () => {

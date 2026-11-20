@@ -10,6 +10,8 @@
 
 - Release state, selector, and match subscriptions on stop so listeners from a previous session do not receive updates after restart.
 
+- Keep the router idle and skip component and loader work when a subscriber stops a navigation as it starts.
+
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
 
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
