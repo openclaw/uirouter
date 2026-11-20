@@ -601,7 +601,8 @@ export function createRouter<
       ) {
         return Promise.resolve();
       }
-      const target = active?.routeId === targetRouteId ? active.location : locationForRoute(targetRouteId);
+      const target =
+        active?.routeId === targetRouteId ? active.location : locationForRoute(targetRouteId);
       return navigate(targetRouteId, context, { history: "none", revalidate: true }, target);
     },
     stop() {
