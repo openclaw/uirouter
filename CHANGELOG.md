@@ -34,6 +34,8 @@
 
 - Update individual cache entries during preload and navigation. Match lists are copied on demand when a caller reads state or a state subscriber needs a snapshot.
 
+- Keep the last resolved URL during pending and joined navigation without copying cached matches.
+
 ### CI
 
 - Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.

@@ -13,7 +13,7 @@ export type MatchStore<TRouteId extends string, TModule, TData> = {
   getMatch: (matchId: string) => RouteMatch<TRouteId, TModule, TData> | undefined;
   getCachedMatch: (matchId: string) => RouteMatch<TRouteId, TModule, TData> | undefined;
   getActiveMatch: () => RouteMatch<TRouteId, TModule, TData> | undefined;
-  setLocation: (location: RouteLocation, resolvedLocation: RouteLocation | null) => void;
+  setLocation: (location: RouteLocation, resolvedLocation?: RouteLocation | null) => void;
   setStatus: (status: RouterState<TRouteId, TModule, TData>["status"]) => void;
   setActive: (match?: RouteMatch<TRouteId, TModule, TData>) => void;
   setPending: (match?: RouteMatch<TRouteId, TModule, TData>) => void;
@@ -169,7 +169,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     getMatch,
     getCachedMatch: (matchId) => cached.get(matchId),
     getActiveMatch: () => active.values().next().value,
-    setLocation(nextLocation, nextResolvedLocation) {
+    setLocation(nextLocation, nextResolvedLocation = resolvedLocation) {
       if (
         location.pathname === nextLocation.pathname &&
         location.search === nextLocation.search &&
