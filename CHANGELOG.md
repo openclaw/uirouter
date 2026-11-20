@@ -10,6 +10,8 @@
 
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
+- Keep a restarted router’s cached component when an import from before stop rejects.
+
 - Release state, selector, and match subscriptions on stop so listeners from a previous session do not receive updates after restart.
 
 - Keep the router idle and skip further loads when a subscriber stops a pending or redirecting navigation.
