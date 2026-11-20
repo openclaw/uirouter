@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
 import {
+  copyFileSync,
   existsSync,
   mkdtempSync,
-  readFileSync,
   realpathSync,
   rmSync,
   writeFileSync,
@@ -77,11 +77,6 @@ try {
     );
   }
 
-  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-  if (pkg.name !== "@openclaw/uirouter") {
-    throw new Error(`unexpected package name: ${pkg.name}`);
-  }
-
   const archive = join(workdir, filename);
   writeFileSync(join(workdir, "package.json"), '{"private":true,"type":"module"}\n');
   runNpm(["install", "--ignore-scripts", "--no-audit", "--no-fund", "--no-package-lock", archive], {
@@ -89,14 +84,9 @@ try {
     encoding: "utf8",
     stdio: "pipe",
   });
-  execFileSync(
-    process.execPath,
-    ["--input-type=module", "--eval", 'await import("@openclaw/uirouter");'],
-    {
-      cwd: workdir,
-      stdio: "pipe",
-    },
-  );
+  const consumer = join(workdir, "consumer.mjs");
+  copyFileSync(new URL("../test/packed-consumer.mjs", import.meta.url), consumer);
+  execFileSync(process.execPath, [consumer], { cwd: workdir, stdio: "inherit" });
 } finally {
   rmSync(workdir, { force: true, recursive: true });
 }
