@@ -3,6 +3,31 @@ import { createRouter, redirect } from "../src/index";
 import { deferred } from "./fixtures";
 
 describe("preload cancellation", () => {
+  it("ignores a preload redirect after forced revalidation replaces its data", async () => {
+    const pending = deferred<string>();
+    const redirected = vi.fn(() => "redirected");
+    const router = createRouter({
+      routes: [
+        {
+          id: "source",
+          path: "/source",
+          component: () => "source",
+          loader: (context: string) => (context === "old" ? pending.promise : context),
+        },
+        { id: "away", path: "/away", component: () => "away" },
+        { id: "target", path: "/target", component: () => "target", loader: redirected },
+      ],
+    });
+    const preload = router.preloadRoute("source", "old");
+    await router.revalidate("fresh", "source");
+    await router.navigate("away", "away");
+    pending.reject(redirect({ pathname: "/target", search: "", hash: "" }));
+    await preload;
+    expect(redirected).not.toHaveBeenCalled();
+    expect(router.getState().cachedMatches).toMatchObject([{ routeId: "source", data: "fresh" }]);
+    router.stop();
+  });
+
   it.each(["returned redirect", "thrown redirect", "error"])(
     "ignores a late %s after stop without deleting a replacement preload",
     async (outcome) => {

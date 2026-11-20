@@ -14,6 +14,8 @@
 
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
+- Cancel a preload superseded by a forced load so its late failure cannot evict fresh data or follow an obsolete redirect.
+
 ### CI
 
 - Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.
