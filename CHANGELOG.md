@@ -16,6 +16,8 @@
 
 ### CI
 
+- Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.
+
 - Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.
 
 - Refresh the formatter, linter, bundler, Vite, and CodeQL patches while preserving runtime requirements and package exports. Thanks @dependabot.
