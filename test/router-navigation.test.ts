@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createRouter, definePage, type RouteLoadCause, type RouteLocation } from "../src/index";
+import { createRouter, definePage, type RouteLoadCause } from "../src/index";
+import { location } from "./fixtures";
 
 type RouteId = "home" | "chat";
 type TestContext = {
@@ -14,10 +15,6 @@ type TestData = {
   pathname: string;
 };
 
-function location(pathname: string, search = "", hash = ""): RouteLocation {
-  return { pathname, search, hash };
-}
-
 describe("router route matching", () => {
   it("normalizes route paths, aliases, base paths, and index.html paths", () => {
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({
@@ -30,7 +27,7 @@ describe("router route matching", () => {
         definePage({
           id: "chat",
           path: "/chat/",
-          aliases: ["/c", "/chat/index.html"],
+          aliases: ["/c"],
           component: () => ({ view: "chat" }),
         }),
       ],

@@ -1,16 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRouter } from "../src/index";
-
-function ignoreError(_error: Error): void {}
+import { deferred } from "./fixtures";
 
 describe("router loading errors", () => {
   it("observes loader rejection when the component throws synchronously", async () => {
     const componentError = new Error("component failed");
     const loaderError = new Error("loader failed");
-    let rejectLoader: (error: Error) => void = ignoreError;
-    const data = new Promise<string>((_resolve, reject) => {
-      rejectLoader = reject;
-    });
+    const { promise: data, reject: rejectLoader } = deferred<string>();
     const router = createRouter({
       routes: [
         {
@@ -42,22 +38,24 @@ describe("router loading errors", () => {
           id: "page",
           path: "/page",
           component,
-          loader: () => {
+          loader: (context: string) => {
             if (attempts++ === 0) {
               throw failure;
             }
-            return "retried";
+            return context;
           },
         },
       ],
     });
 
-    await expect(router.navigate("page", undefined)).rejects.toBe(failure);
+    await expect(router.navigate("page", "initial")).rejects.toBe(failure);
     expect(component).toHaveBeenCalledOnce();
-    await router.revalidate(undefined);
+    expect(router.getState()).toMatchObject({status: "error", matches: [{routeId: "page", status: "error", error: failure, isFetching: false}]});
+    await router.revalidate("retried");
+    expect(attempts).toBe(2);
     expect(router.getState()).toMatchObject({
       status: "success",
-      matches: [{ status: "success", data: "retried", module: { view: "page" } }],
+      matches: [{ status: "success", data: "retried", error: undefined, invalid: false, module: { view: "page" } }],
     });
     expect(component).toHaveBeenCalledOnce();
     router.stop();

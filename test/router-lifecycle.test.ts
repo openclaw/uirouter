@@ -1,35 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { createRouter, definePage } from "../src/index";
-
-function ignoreError(_error: Error): void {}
-
-function ignoreEnter(): void {}
-
-type RouteId = "chat" | "settings";
-type TestContext = {
-  label: string;
-};
-type TestModule = {
-  view: string;
-};
-type TestData = {
-  route: RouteId;
-  label: string;
-};
+import { createRouter } from "../src/index";
+import { deferred } from "./fixtures";
 
 describe("router lifecycle", () => {
   it.each(["navigate", "stop", "current"] as const)(
     "only publishes an asynchronous hook error while its navigation is current (%s)",
     async (action) => {
       const failure = new Error("hook failed");
-      let rejectHook: (error: Error) => void = ignoreError;
-      let entered: () => void = ignoreEnter;
-      const started = new Promise<void>((resolve) => {
-        entered = resolve;
-      });
-      const hook = new Promise<void>((_resolve, reject) => {
-        rejectHook = reject;
-      });
+      const { promise: hook, reject: rejectHook } = deferred<void>();
+      const { promise: started, resolve: entered } = deferred<void>();
       const router = createRouter({
         routes: [
           {
@@ -71,35 +50,35 @@ describe("router lifecycle", () => {
 
   it("runs enter and leave hooks in route-transition order", async () => {
     const events: string[] = [];
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+    const router = createRouter({
       routes: [
-        definePage<"chat", TestContext, TestModule, TestData>({
+        {
           id: "chat",
           path: "/chat",
           component: () => ({ view: "chat" }),
-          loader: (context) => ({ route: "chat", label: context.label }),
+          loader: () => "chat",
           onEnter: (_context, data, options) => {
-            events.push(`enter:${data?.route}:${options.location.pathname}`);
+            events.push(`enter:${data}:${options.location.pathname}`);
           },
           onLeave: (_context, data, options) => {
-            events.push(`leave:${data?.route}:${options.location.pathname}`);
+            events.push(`leave:${data}:${options.location.pathname}`);
           },
-        }),
-        definePage<"settings", TestContext, TestModule, TestData>({
+        },
+        {
           id: "settings",
           path: "/settings",
           component: () => ({ view: "settings" }),
-          loader: (context) => ({ route: "settings", label: context.label }),
+          loader: () => "settings",
           onEnter: (_context, data, options) => {
-            events.push(`enter:${data?.route}:${options.location.pathname}`);
+            events.push(`enter:${data}:${options.location.pathname}`);
           },
-        }),
+        },
       ],
     });
 
-    await router.navigate("chat", { label: "agent" });
-    await router.navigate("settings", { label: "agent" });
-    await router.revalidate({ label: "agent" });
+    await router.navigate("chat", undefined);
+    await router.navigate("settings", undefined);
+    await router.revalidate(undefined);
 
     expect(events).toEqual(["enter:chat:/chat", "leave:chat:/chat", "enter:settings:/settings"]);
   });
