@@ -212,6 +212,33 @@ describe("router control results", () => {
     },
   );
 
+  it.each([{ type: "redirect" }, { type: "redirect", location: "/archive" }])(
+    "preserves %j as loader data and as a thrown error",
+    async (record) => {
+      const router = createRouter({
+        routes: [
+          {
+            id: "log",
+            path: "/log",
+            component: () => "log",
+            loader: (fail: boolean) => {
+              if (fail) {
+                throw record;
+              }
+              return record;
+            },
+          },
+        ],
+      });
+      await router.navigate("log", false);
+      expect(router.getState().status).toBe("success");
+      expect(router.getState().matches[0].data).toBe(record);
+      await expect(router.revalidate(true)).rejects.toBe(record);
+      expect(router.getState().status).toBe("error");
+      router.stop();
+    },
+  );
+
   it("publishes not-found route state from loaders", async () => {
     const result = notFound({ code: "missing-record" });
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({

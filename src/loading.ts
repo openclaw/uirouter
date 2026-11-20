@@ -1,11 +1,11 @@
 import type { MatchStore } from "./matches";
-import type {
-  PageDefinition,
-  RouteHookOptions,
-  RouteMatch,
-  RouteNotFound,
-  RouteRedirect,
-  RouteStaleReloadMode,
+import {
+  isRouteNotFound,
+  isRouteRedirect,
+  type PageDefinition,
+  type RouteHookOptions,
+  type RouteMatch,
+  type RouteStaleReloadMode,
 } from "./types";
 
 export type RouteLoadResult<TModule, TData> = {
@@ -25,15 +25,6 @@ type RouteLoadingOptions = {
   preloadGcTime: number;
   gcTime: number;
 };
-
-function isRouteControl(value: unknown): value is RouteNotFound | RouteRedirect {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    (value.type === "notFound" || value.type === "redirect")
-  );
-}
 
 // Host timers coerce delays outside signed 32-bit to 1ms.
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
@@ -141,7 +132,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       deps: current.deps,
     });
     return Promise.resolve(loaded).then((data) => {
-      if (isRouteControl(data)) {
+      if (isRouteNotFound(data) || isRouteRedirect(data)) {
         throw data;
       }
       return { data, updatedAt: Date.now() };
@@ -169,8 +160,16 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     }));
     // A subscriber can stop the router while observing the fetch above.
     hookOptions.signal.throwIfAborted();
-    const isCurrentFetch = (matchId: string) =>
-      matchStore.getMatch(matchId)?.fetchCount === fetchCount && !hookOptions.signal.aborted;
+    // A new match after stop() starts again at fetchCount 1, so identity is the signal.
+    const isCurrentFetch = (matchId: string) => {
+      const stored = matchStore.getMatch(matchId);
+      return (
+        stored !== undefined &&
+        stored.fetchCount === fetchCount &&
+        stored.abortController.signal === hookOptions.signal &&
+        !hookOptions.signal.aborted
+      );
+    };
     const dataPromise = loadData(current, route, context, hookOptions, force);
     const modulePromise = loadModule(route, current);
     const visibleModulePromise = modulePromise.then((module) => {

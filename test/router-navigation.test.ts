@@ -6,7 +6,7 @@ import {
   normalizeRoutePath,
   type RouteLoadCause,
 } from "../src/index";
-import { createMemoryHistory, location } from "./fixtures";
+import { createMemoryHistory, deferred, location } from "./fixtures";
 
 type RouteId = "home" | "chat";
 type TestContext = {
@@ -115,6 +115,35 @@ it("keeps route and dependency strings distinct when they contain a null charact
 });
 
 describe("router navigation", () => {
+  it.each([false, true])(
+    "keeps the resolved URL during a join (active route present = %s)",
+    async (active) => {
+      const component = deferred<string>();
+      const router = createRouter({
+        routes: [
+          { id: "a", path: "/a", component: () => "a" },
+          { id: "b", path: "/b", component: () => component.promise },
+        ],
+      });
+      if (active) {
+        await router.navigate("a", undefined);
+      }
+      const resolved = router.getState().resolvedLocation;
+      const navigation = router.navigate("b", undefined);
+      expect(router.getState().resolvedLocation).toBe(resolved);
+
+      const latest = location("/b", "?joined", "#entry");
+      const joined = router.navigateLocation(latest, undefined);
+      expect(router.getState().location).toEqual(latest);
+      expect(router.getState().resolvedLocation).toBe(resolved);
+
+      component.resolve("b");
+      await Promise.all([navigation, joined]);
+      expect(router.getState().resolvedLocation).toEqual(latest);
+      router.stop();
+    },
+  );
+
   it("loads the target route and publishes the resolved match", async () => {
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({
       routes: [

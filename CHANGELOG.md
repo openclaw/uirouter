@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Keep the module loaded after restart when a component import from before stop resolves later.
+
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
 
 - Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.
@@ -17,6 +19,8 @@
 - Keep the router idle and skip further loads when a subscriber stops a pending or redirecting navigation.
 
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
+
+- Allow loaders to return records with `type: "redirect"` as data when they have no valid redirect location.
 
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
