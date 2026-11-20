@@ -447,7 +447,7 @@ export function createRouter<
     lastContext = { value: context };
     const normalized = normalizeLocation(location);
     const matched = compiled.routeIdFromPath(normalized.pathname, basePath);
-    if (!matched) {
+    if (matched === null) {
       cancelCurrentRun();
       matches.batch(() => {
         matches.setActive([]);
@@ -536,9 +536,9 @@ export function createRouter<
     lastContext = { value: context };
     const normalized = normalizeLocation(location);
     const routeId = compiled.routeIdFromPath(normalized.pathname, basePath);
-    return routeId
-      ? preloadAtLocation(routeId, context, normalized, redirectFollow)
-      : Promise.resolve();
+    return routeId === null
+      ? Promise.resolve()
+      : preloadAtLocation(routeId, context, normalized, redirectFollow);
   };
 
   const hasPendingNavigationToDifferentMatch = (matchId: string): boolean => {
@@ -596,7 +596,7 @@ export function createRouter<
       const active = matches.getActiveMatch();
       const targetRouteId = routeId ?? active?.routeId;
       if (
-        !targetRouteId ||
+        targetRouteId === undefined ||
         (routeId === undefined &&
           active !== undefined &&
           hasPendingNavigationToDifferentMatch(active.id))

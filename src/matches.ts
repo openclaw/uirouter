@@ -39,12 +39,15 @@ export type MatchStore<TRouteId extends string, TModule, TData> = {
 
 export type CompiledRoutes<TRouteId extends string, TLoadContext, TModule, TData> = {
   byId: Map<TRouteId, PageDefinition<TRouteId, TLoadContext, TModule, TData>>;
-  byPath: Map<string, TRouteId>;
   pathForRoute: (routeId: TRouteId, basePath?: string) => string;
   routeIdFromPath: (pathname: string, basePath?: string) => TRouteId | null;
 };
 
 export function matchIdForLocation(routeId: string, deps: string): string {
+  // JSON escapes null characters, so this form cannot overlap a delimited id.
+  if (routeId.includes("\u0000")) {
+    return JSON.stringify([routeId, deps]);
+  }
   return `${routeId}\u0000${deps}`;
 }
 
@@ -325,12 +328,20 @@ export function normalizeRoutePath(path: string): string {
   return normalizeRouteBasePath(path) || "/";
 }
 
-function pathKey(path: string): string {
-  const normalized = normalizeRoutePath(path).toLowerCase();
-  if (normalized.endsWith("/index.html")) {
-    return normalizeRoutePath(normalized.slice(0, -"/index.html".length));
+function withoutTrailingSlashes(path: string): string {
+  let end = path.length;
+  while (path[end - 1] === "/") {
+    end--;
   }
-  return normalized;
+  return path.slice(0, end);
+}
+
+function pathKey(path: string): string {
+  const normalized = withoutTrailingSlashes(normalizeRoutePath(path).toLowerCase());
+  const key = normalized.endsWith("/index.html")
+    ? withoutTrailingSlashes(normalized.slice(0, -"/index.html".length))
+    : normalized;
+  return key || "/";
 }
 
 export function normalizeLocation(location: RouteLocation): RouteLocation {
@@ -365,7 +376,7 @@ export function compileRoutes<TRouteId extends string, TLoadContext, TModule, TD
     for (const candidate of [normalizedRoute.path, ...(route.aliases ?? [])]) {
       const key = pathKey(candidate);
       const existing = byPath.get(key);
-      if (existing && existing !== route.id) {
+      if (existing !== undefined && existing !== route.id) {
         throw new Error(`Duplicate route path "${candidate}".`);
       }
       byPath.set(key, route.id);
@@ -374,7 +385,6 @@ export function compileRoutes<TRouteId extends string, TLoadContext, TModule, TD
 
   return {
     byId,
-    byPath,
     pathForRoute(routeId, basePath = "") {
       const route = byId.get(routeId);
       if (!route) {
