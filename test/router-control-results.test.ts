@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createRouter, definePage, notFound, redirect } from "../src/index";
 import { location } from "./fixtures";
 
@@ -14,6 +14,28 @@ type TestData = {
 };
 
 describe("router control results", () => {
+  it("stops before loading a redirect destination when a subscriber cancels", async () => {
+    const target = vi.fn(() => "target");
+    const router = createRouter({
+      routes: [
+        { id: "a", path: "/a", component: () => "a", loader: () => redirect(location("/b")) },
+        { id: "b", path: "/b", component: target },
+      ],
+    });
+    const idle = router.getState();
+    router.subscribeSelector(
+      (state) => state.status,
+      (status) => {
+        if (status === "redirected") {
+          router.stop();
+        }
+      },
+    );
+    await router.navigate("a", undefined);
+    expect(router.getState()).toEqual(idle);
+    expect(target).not.toHaveBeenCalled();
+  });
+
   it("follows loader redirects and publishes the destination route", async () => {
     const router = createRouter<RouteId, TestContext, TestModule, TestData>({
       routes: [

@@ -327,14 +327,19 @@ export function createRouter<
             failure = redirectError;
           }
           if (follow) {
-            matches.updateMatch(match.id, (current) => ({
-              ...current,
-              status: "redirected",
-              isFetching: false,
-              error,
-              updatedAt: Date.now(),
-            }));
-            matches.setStatus("redirected");
+            matches.batch(() => {
+              matches.updateMatch(match.id, (current) => ({
+                ...current,
+                status: "redirected",
+                isFetching: false,
+                error,
+                updatedAt: Date.now(),
+              }));
+              matches.setStatus("redirected");
+            });
+            if (!hookOptions.shouldRun()) {
+              return;
+            }
             currentRun = null;
             await handleLocation(error.location, context, false, "replace", follow);
             return;
