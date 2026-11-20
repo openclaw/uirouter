@@ -102,6 +102,12 @@ export function createRouter<
   const locationForRoute = (routeId: TRouteId) =>
     locationForPath(compiled.pathForRoute(routeId, basePath));
 
+  const writeHistory = (location: RouteLocation, mode: RouterNavigationOptions["history"]) => {
+    if (mode && mode !== "none") {
+      history?.[mode](location);
+    }
+  };
+
   const cancelCurrentRun = () => {
     currentRun?.controller.abort();
     currentRun = null;
@@ -175,9 +181,7 @@ export function createRouter<
         ? true
         : cachedReady && !cachedFresh && loading.shouldReloadInBackground(route);
 
-    if (history && navigationOptions.history && navigationOptions.history !== "none") {
-      history[navigationOptions.history](location);
-    }
+    writeHistory(location, navigationOptions.history);
 
     const ongoing = currentRun;
     if (ongoing?.matchId === matchId && ongoing.promise && !ongoing.controller.signal.aborted) {
@@ -432,6 +436,7 @@ export function createRouter<
     const normalized = normalizeLocation(location);
     const matched = compiled.routeIdFromPath(normalized.pathname, basePath);
     if (matched === null) {
+      writeHistory(normalized, historyMode);
       cancelCurrentRun();
       matches.batch(() => {
         matches.setActive();

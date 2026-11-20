@@ -10,6 +10,8 @@
 
 - Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.
 
+- Replace the history entry when a loader redirects to an unmatched location, keeping the address in sync with the not-found state.
+
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
 - Keep a restarted router’s cached component when an import from before stop rejects.
