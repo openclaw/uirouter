@@ -7,17 +7,17 @@ import {
   matchIdForLocation,
   normalizeLocation,
 } from "./matches";
-import type {
-  RouteHookOptions,
-  RouteLocation,
-  RouteLoadCause,
-  RouteMatch,
-  RouteNotFound,
-  RouteRedirect,
-  Router,
-  RouterHistory,
-  RouterNavigationOptions,
-  RouterOptions,
+import {
+  isRouteNotFound,
+  isRouteRedirect,
+  type RouteHookOptions,
+  type RouteLocation,
+  type RouteLoadCause,
+  type RouteMatch,
+  type Router,
+  type RouterHistory,
+  type RouterNavigationOptions,
+  type RouterOptions,
 } from "./types";
 
 type NavigationRun = {
@@ -71,36 +71,6 @@ function inFlightAbortController<TRouteId extends string, TModule, TData>(
     return undefined;
   }
   return match.abortController;
-}
-
-function isRouteNotFound(error: unknown): error is RouteNotFound {
-  return (
-    typeof error === "object" && error !== null && "type" in error && error.type === "notFound"
-  );
-}
-
-function isRouteRedirect(error: unknown): error is RouteRedirect {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "type" in error &&
-    error.type === "redirect" &&
-    "location" in error &&
-    isRouteLocation(error.location)
-  );
-}
-
-function isRouteLocation(value: unknown): value is RouteLocation {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "pathname" in value &&
-    typeof value.pathname === "string" &&
-    "search" in value &&
-    typeof value.search === "string" &&
-    "hash" in value &&
-    typeof value.hash === "string"
-  );
 }
 
 export function createRouter<

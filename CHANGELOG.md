@@ -18,6 +18,8 @@
 
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
 
+- Allow loaders to return records with `type: "redirect"` as data when they have no valid redirect location.
+
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
 - Cancel a preload superseded by a forced load so its late failure cannot evict fresh data or follow an obsolete redirect.
