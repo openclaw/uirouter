@@ -6,7 +6,6 @@ import {
   locationForPath,
   matchIdForLocation,
   normalizeLocation,
-  normalizeRouteBasePath,
 } from "./matches";
 import type {
   RouteHookOptions,
@@ -227,6 +226,10 @@ export function createRouter<
 
     currentRun?.controller.abort();
     const reusable = sameMatch ? previous : cached;
+    const forceLoad = revalidating || Boolean(cached?.invalid);
+    if (forceLoad && reusable?.isFetching) {
+      reusable.abortController.abort();
+    }
     const controller = inFlightAbortController(reusable) ?? new AbortController();
     const cause: RouteLoadCause = revalidating ? "revalidate" : "navigation";
     const match: RouteMatch<TRouteId, TModule, TData> = reusable
@@ -270,14 +273,19 @@ export function createRouter<
         matches.setLocation(location, location);
         matches.setStatus("success");
       });
-    } else if (sameMatch) {
-      matches.updateMatch(match.id, () => match);
     } else {
-      matches.setPending(match);
+      matches.batch(() => {
+        if (sameMatch) {
+          matches.updateMatch(match.id, () => match);
+        } else {
+          matches.setPending(match);
+        }
+        matches.setLocation(location, previousLocation);
+        matches.setStatus(backgroundReload ? "success" : "loading");
+      });
     }
-    if (!activatedCachedMatch) {
-      matches.setLocation(location, previousLocation);
-      matches.setStatus(backgroundReload ? "success" : "loading");
+    if (!hookOptions.shouldRun()) {
+      return;
     }
 
     const navigation = (async () => {
@@ -288,7 +296,7 @@ export function createRouter<
           route,
           context,
           hookOptions,
-          revalidating || Boolean(cached?.invalid),
+          forceLoad,
           (module) => {
             if (!hookOptions.shouldRun() || matches.getActiveMatch()?.id === match.id) {
               return;
@@ -319,14 +327,19 @@ export function createRouter<
             failure = redirectError;
           }
           if (follow) {
-            matches.updateMatch(match.id, (current) => ({
-              ...current,
-              status: "redirected",
-              isFetching: false,
-              error,
-              updatedAt: Date.now(),
-            }));
-            matches.setStatus("redirected");
+            matches.batch(() => {
+              matches.updateMatch(match.id, (current) => ({
+                ...current,
+                status: "redirected",
+                isFetching: false,
+                error,
+                updatedAt: Date.now(),
+              }));
+              matches.setStatus("redirected");
+            });
+            if (!hookOptions.shouldRun()) {
+              return;
+            }
             currentRun = null;
             await handleLocation(error.location, context, false, "replace", follow);
             return;
@@ -575,7 +588,7 @@ export function createRouter<
     routeIdFromPath: compiled.routeIdFromPath,
     start(nextHistory: RouterHistory, nextBasePath: string, context: TLoadContext): Promise<void> {
       history = nextHistory;
-      basePath = normalizeRouteBasePath(nextBasePath);
+      basePath = nextBasePath;
       stopHistory?.();
       lastContext = { value: context };
       stopHistory = history.listen((location) => {
