@@ -6,6 +6,8 @@
 
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
 
+- Allow preloading a cached route again after navigating away during revalidation.
+
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
 - Release state, selector, and match subscriptions on stop so listeners from a previous session do not receive updates after restart.
