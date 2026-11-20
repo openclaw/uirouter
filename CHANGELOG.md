@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Replace the history entry when a loader redirects to an unmatched location, keeping the address in sync with the not-found state.
+
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
 
 - Resolve generated route paths consistently when a history adapter starts with a base ending in repeated slashes.
