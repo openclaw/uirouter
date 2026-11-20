@@ -17,8 +17,9 @@ Use the Node.js and pnpm versions declared by the repository.
 Dependency engine checks are enforced through `engineStrict` in
 `pnpm-workspace.yaml`; pnpm 11 does not read this setting from `.npmrc`.
 Use patched Node 22.23.4+, 24.22.1+, or 26.12.1+ for development. CI checks
-Node 26.12.1 on Ubuntu and Node 22.23.4/24.22.1 across Ubuntu, macOS, and
-Windows. Node 25 development qualification is retired because it has no
+all three versions on Ubuntu. On macOS and Windows it checks Node 24 on pull
+requests and Node 22 on pushes to main. Manual CI runs cover all seven pairs.
+Node 25 development qualification is retired because it has no
 supported incident-key rejection update. The published package engine range
 is unchanged; it is a JavaScript compatibility declaration, not a security
 guarantee for an operator-selected runtime.

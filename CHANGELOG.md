@@ -8,15 +8,23 @@
 
 ### CI
 
+- Use the prebuilt actionlint image to skip compiling the workflow linter in each CI run.
+
 - Refresh the formatter, linter, bundler, Vite, and CodeQL patches while preserving runtime requirements and package exports. Thanks @dependabot.
 
+- Reuse the previous pnpm store for each OS and architecture when a dependency update changes the lockfile.
+
 - Update Vitest to 5.1.0 and tsdown to 0.23.4, align Oxlint ranges, and remove expired TypeScript cooldown exceptions while retaining the two-day policy. Thanks @dependabot[bot].
+
+- Run ClawSweeper dispatch and weekly stale triage on single-CPU Linux runners.
 
 - Keep full weekly CodeQL analysis without duplicate main-push scans, isolate scheduled and manual runs, and analyze PRs when marked ready for review.
 
 - Refresh tsdown, Vitest, and the type-aware lint backend after retiring Node 25 development qualification; preserve the package's exports and runtime engine range.
 
 - Qualify patched Node 26.12.1 in place of Node 25 for development and retire its dependency-update restrictions. Preserve the published JavaScript engine range and Node 22/24 qualification. Thanks @joshavant.
+
+- Split macOS and Windows checks between Node 24 on pull requests and Node 22 on main. Manual runs cover both versions.
 
 - Pin Node 22/24 CI checks to 22.23.4/24.22.1 while retaining Node 25 compatibility coverage.
 
@@ -25,6 +33,8 @@
 - Use Node.js24.22.1 for release tooling to reject the disclosed eMudhra incident keys.
 
 - Update CodeQL to 4.39.0 while preserving the Node 25-compatible build and test toolchain. Thanks @dependabot.
+- Skip allocating a dispatch runner for issue and comment events that fail the existing author checks.
+
 - Run macOS checks on Apple Silicon `xcode-27` runners and support non-publishing release validation on `main`.
 
 - Update oxfmt to 0.73.0 and oxlint to 1.88.0 while retaining the complete Node 25-compatible build toolchain. Thanks @dependabot.
