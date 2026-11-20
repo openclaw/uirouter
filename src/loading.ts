@@ -69,7 +69,10 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
   matchStore: MatchStore<TRouteId, TModule, TData>,
 ): RouteLoading<TRouteId, TLoadContext, TModule, TData> {
   const moduleCache = new Map<TRouteId, Promise<TModule>>();
-  const inFlight = new Map<string, Promise<RouteLoadResult<TModule, TData>>>();
+  const inFlight = new Map<
+    string,
+    { signal: AbortSignal; promise: Promise<RouteLoadResult<TModule, TData>> }
+  >();
   const gcTimers = new Map<string, ReturnType<typeof globalThis.setTimeout>>();
   const freshTimeFor = (
     match: RouteMatch<TRouteId, TModule, TData>,
@@ -188,8 +191,8 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     onComponentLoaded?: (module: TModule) => void,
   ): Promise<RouteLoadResult<TModule, TData>> => {
     const existing = inFlight.get(match.id);
-    if (existing && !force) {
-      return existing;
+    if (existing && !existing.signal.aborted && !force) {
+      return existing.promise;
     }
     const current = matchStore.getMatch(match.id) ?? match;
     const fetchCount = current.fetchCount + 1;
@@ -232,7 +235,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
         return { data: dataResult.data, module };
       },
     );
-    inFlight.set(match.id, promise);
+    inFlight.set(match.id, { signal: hookOptions.signal, promise });
     try {
       return await promise;
     } catch (error) {
@@ -247,7 +250,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       }
       throw error;
     } finally {
-      if (inFlight.get(match.id) === promise) {
+      if (inFlight.get(match.id)?.promise === promise) {
         inFlight.delete(match.id);
       }
     }
