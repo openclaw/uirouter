@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Start a new loader when returning to a route whose cancelled navigation is still settling.
+
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
 
 ### CI
