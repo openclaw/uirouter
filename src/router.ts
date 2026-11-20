@@ -6,7 +6,6 @@ import {
   locationForPath,
   matchIdForLocation,
   normalizeLocation,
-  normalizeRouteBasePath,
 } from "./matches";
 import type {
   RouteHookOptions,
@@ -578,7 +577,7 @@ export function createRouter<
     routeIdFromPath: compiled.routeIdFromPath,
     start(nextHistory: RouterHistory, nextBasePath: string, context: TLoadContext): Promise<void> {
       history = nextHistory;
-      basePath = normalizeRouteBasePath(nextBasePath);
+      basePath = nextBasePath;
       stopHistory?.();
       lastContext = { value: context };
       stopHistory = history.listen((location) => {
