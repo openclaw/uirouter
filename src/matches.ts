@@ -80,7 +80,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
   const active = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
   const pending = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
   const cached = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
-  const listeners = new Set<(state: RouterState<TRouteId, TModule, TData>) => void>();
+  let listeners = new Set<(state: RouterState<TRouteId, TModule, TData>) => void>();
   const matchListeners = new Map<
     string,
     Set<(match: RouteMatch<TRouteId, TModule, TData> | undefined) => void>
@@ -187,6 +187,12 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
   const getMatch = (matchId: string) =>
     active.get(matchId) ?? pending.get(matchId) ?? cached.get(matchId);
 
+  const subscribe = (listener: (state: RouterState<TRouteId, TModule, TData>) => void) => {
+    const current = listeners;
+    current.add(listener);
+    return () => current.delete(listener);
+  };
+
   return {
     batch,
     getState: readState,
@@ -265,24 +271,30 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
       });
     },
     clear() {
-      batch(() => {
-        for (const pool of [active, pending, cached]) {
-          for (const id of pool.keys()) {
-            changedMatchIds.add(id);
+      try {
+        batch(() => {
+          for (const pool of [active, pending, cached]) {
+            for (const id of pool.keys()) {
+              changedMatchIds.add(id);
+            }
+            pool.clear();
           }
-          pool.clear();
+          refreshSnapshots();
+          location = locationForPath("/");
+          resolvedLocation = null;
+          status = "idle";
+          notify();
+        });
+      } finally {
+        listeners.clear();
+        listeners = new Set();
+        for (const group of matchListeners.values()) {
+          group.clear();
         }
-        refreshSnapshots();
-        location = locationForPath("/");
-        resolvedLocation = null;
-        status = "idle";
-        notify();
-      });
+        matchListeners.clear();
+      }
     },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
+    subscribe,
     subscribeSelector(selector, listener, equal = Object.is) {
       let previous = selector(readState());
       const selectedListener = (state: RouterState<TRouteId, TModule, TData>) => {
@@ -293,15 +305,16 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
         previous = next;
         listener(next);
       };
-      listeners.add(selectedListener);
-      return () => listeners.delete(selectedListener);
+      return subscribe(selectedListener);
     },
     subscribeMatch(matchId, listener) {
       const current = matchListeners.get(matchId) ?? new Set();
       current.add(listener);
       matchListeners.set(matchId, current);
       return () => {
-        current.delete(listener);
+        if (matchListeners.get(matchId) !== current || !current.delete(listener)) {
+          return false;
+        }
         if (current.size === 0) {
           matchListeners.delete(matchId);
         }

@@ -87,7 +87,7 @@ await router.start(browserHistory, "/app", { userId: "u_1" });
 ```
 
 `start` matches the current location, runs its loader, and subscribes to
-history changes. Call `router.stop()` to detach and clear caches.
+history changes. Call `router.stop()` to detach, clear caches, and release subscriptions. Subscribe again after restarting the router.
 Late errors and redirects from cancelled preloads are ignored, including after
 the router starts loading again.
 
