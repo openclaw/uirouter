@@ -1,35 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRouter, definePage } from "../src/index";
+import { createRouter } from "../src/index";
 import { createMemoryHistory, location } from "./fixtures";
 
-type RouteId = "chat" | "settings";
-type TestContext = {
-  label: string;
-};
-type TestModule = {
-  view: string;
-};
-type TestData = {
-  label: string;
-  route: RouteId;
-};
-
 function createTestRouter() {
-  return createRouter<RouteId, TestContext, TestModule, TestData>({
-    routes: [
-      definePage<"chat", TestContext, TestModule, TestData>({
-        id: "chat",
-        path: "/chat",
-        component: () => ({ view: "chat" }),
-        loader: (context) => ({ label: context.label, route: "chat" }),
-      }),
-      definePage<"settings", TestContext, TestModule, TestData>({
-        id: "settings",
-        path: "/settings",
-        component: () => ({ view: "settings" }),
-        loader: (context) => ({ label: context.label, route: "settings" }),
-      }),
-    ],
+  return createRouter({
+    routes: (["chat", "settings"] as const).map((id) => ({
+      id,
+      path: `/${id}`,
+      component: () => id,
+      loader: (context: { label: string }) => ({ label: context.label, route: id }),
+    })),
   });
 }
 
@@ -98,7 +78,9 @@ it("detaches old subscriptions when the router restarts", async () => {
   selected.mockClear();
   match.mockClear();
 
-  await router.start(history, "", context);
+  await router.start(createMemoryHistory(location("/chat")), "", context);
+  history.emit(location("/settings"));
+  expect(router.getState().location).toEqual(location("/chat"));
   expect(state).not.toHaveBeenCalled();
   expect(selected).not.toHaveBeenCalled();
   expect(match).not.toHaveBeenCalled();
@@ -141,7 +123,6 @@ describe("router history", () => {
     await expect.poll(() => router.getState().status).toBe("success");
     expect(router.getState().location).toEqual(location("/settings", "?tab=tools"));
 
-    expect(router.getState().status).toBe("success");
     expect(router.getState().matches[0]?.data).toEqual({ label: "u_2", route: "settings" });
   });
 

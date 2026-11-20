@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRouter, redirect } from "../src/index";
-import { deferred } from "./fixtures";
+import { createMemoryHistory, deferred, location } from "./fixtures";
 
 describe("preload cancellation", () => {
   it.each(["returned redirect", "thrown redirect", "error"])(
@@ -53,4 +53,37 @@ describe("preload cancellation", () => {
       router.stop();
     },
   );
+
+  it("shares one preload with navigation and aborts it on stop", async () => {
+    const pending = deferred<string>();
+    const signals: AbortSignal[] = [];
+    const router = createRouter({
+      routes: [
+        {
+          id: "a",
+          path: "/a",
+          component: () => "view-a",
+          loader: (context: string, { signal }) => {
+            signals.push(signal);
+            return context === "alice" ? pending.promise : context;
+          },
+        },
+      ],
+    });
+    const preload = router.preloadRoute("a", "alice");
+    const navigation = router.navigate("a", "alice");
+    expect(signals).toHaveLength(1);
+    router.stop();
+    expect(signals[0].aborted).toBe(true);
+
+    await router.start(createMemoryHistory(location("/a")), "", "bob");
+    const restarted = router.getState();
+    expect(restarted.matches).toMatchObject([
+      { routeId: "a", status: "success", data: "bob", preload: false },
+    ]);
+    pending.resolve("alice");
+    await Promise.all([preload, navigation]);
+    expect(router.getState()).toEqual(restarted);
+    router.stop();
+  });
 });
