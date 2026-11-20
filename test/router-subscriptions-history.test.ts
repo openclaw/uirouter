@@ -38,6 +38,37 @@ describe("router subscriptions", () => {
     expect(selectedStatuses).toEqual(["loading", "success"]);
   });
 
+  it("preserves cached snapshots when another route is preloaded", async () => {
+    const router = createTestRouter();
+    await router.preloadRoute("chat", { label: "first" });
+    const first = router.getState().cachedMatches;
+
+    await router.preloadRoute("settings", { label: "second" });
+    const both = router.getState().cachedMatches;
+    expect(first).toHaveLength(1);
+    expect(both.map((match) => match.routeId)).toEqual(["chat", "settings"]);
+    expect(both[0]).toBe(first[0]);
+    expect(router.getState().cachedMatches).toBe(both);
+    router.stop();
+  });
+
+  it("reads the latest match after a state subscriber invalidates it", async () => {
+    const router = createTestRouter();
+    await router.navigate("chat", { label: "first" });
+    const chatId = router.getState().matches[0].id;
+    router.subscribe((state) => {
+      if (state.cachedMatches.some((match) => match.id === chatId && !match.invalid)) {
+        void router.invalidate("chat");
+      }
+    });
+    const invalid: boolean[] = [];
+    router.subscribeMatch(chatId, (match) => invalid.push(match?.invalid === true));
+
+    await router.navigate("settings", { label: "second" });
+    expect(invalid).toEqual([true, true]);
+    router.stop();
+  });
+
   it("notifies match subscribers for the selected match only", async () => {
     const router = createTestRouter();
     await router.navigate("chat", { label: "first" });

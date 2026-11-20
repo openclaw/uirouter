@@ -168,10 +168,7 @@ export function createRouter<
     const cached = current.abortController.signal.aborted
       ? { ...current, abortController: new AbortController(), isFetching: false as const }
       : current;
-    matches.setCached([
-      ...matches.getState().cachedMatches.filter((match) => match.id !== cached.id),
-      cached,
-    ]);
+    matches.cacheMatch(cached);
     const route = compiled.byId.get(current.routeId);
     if (route) {
       loading.scheduleGc(cached, route);
@@ -224,7 +221,7 @@ export function createRouter<
       cancelCurrentRun();
       matches.batch(() => {
         matches.updateMatch(previous.id, (current) => ({ ...current, location }));
-        matches.setPending([]);
+        matches.setPending();
         matches.setLocation(location, location);
         matches.setStatus("success");
       });
@@ -275,8 +272,8 @@ export function createRouter<
     if (activatedCachedMatch) {
       matches.batch(() => {
         cacheStoredMatch(previous);
-        matches.setActive([activatedCachedMatch]);
-        matches.setPending([]);
+        matches.setActive(activatedCachedMatch);
+        matches.setPending();
         matches.setLocation(location, location);
         matches.setStatus("success");
       });
@@ -285,7 +282,7 @@ export function createRouter<
         if (sameMatch) {
           matches.updateMatch(match.id, () => match);
         } else {
-          matches.setPending([match]);
+          matches.setPending(match);
         }
         matches.setLocation(location, previousLocation);
         matches.setStatus(backgroundReload ? "success" : "loading");
@@ -315,8 +312,8 @@ export function createRouter<
             targetPublished = true;
             matches.batch(() => {
               cacheStoredMatch(previous);
-              matches.setActive([{ ...loadedMatch, module }]);
-              matches.setPending([]);
+              matches.setActive({ ...loadedMatch, module });
+              matches.setPending();
               matches.setLocation(location, location);
             });
           },
@@ -368,9 +365,9 @@ export function createRouter<
               updatedAt: Date.now(),
             }));
             if (!targetPublished) {
-              matches.setActive([matches.getMatch(match.id) ?? failedMatch]);
+              matches.setActive(matches.getMatch(match.id) ?? failedMatch);
             }
-            matches.setPending([]);
+            matches.setPending();
             matches.setLocation(location, location);
             matches.setStatus(status);
           });
@@ -404,8 +401,8 @@ export function createRouter<
         if (!targetPublished && !sameMatch) {
           cacheStoredMatch(currentActive);
         }
-        matches.setActive([resolvedMatch]);
-        matches.setPending([]);
+        matches.setActive(resolvedMatch);
+        matches.setPending();
         matches.setLocation(run.location, run.location);
         matches.setStatus("success");
       });
@@ -467,8 +464,8 @@ export function createRouter<
     if (matched === null) {
       cancelCurrentRun();
       matches.batch(() => {
-        matches.setActive([]);
-        matches.setPending([]);
+        matches.setActive();
+        matches.setPending();
         matches.setLocation(normalized, null);
         matches.setStatus("notFound");
       });
@@ -514,7 +511,7 @@ export function createRouter<
         true,
       );
     if (!existing) {
-      matches.setCached([...matches.getState().cachedMatches, match]);
+      matches.cacheMatch(match);
     }
     const controller = match.abortController;
     const cause = existing && !cached ? match.cause : "preload";

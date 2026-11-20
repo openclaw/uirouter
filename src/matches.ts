@@ -15,9 +15,9 @@ export type MatchStore<TRouteId extends string, TModule, TData> = {
   getActiveMatch: () => RouteMatch<TRouteId, TModule, TData> | undefined;
   setLocation: (location: RouteLocation, resolvedLocation: RouteLocation | null) => void;
   setStatus: (status: RouterState<TRouteId, TModule, TData>["status"]) => void;
-  setActive: (matches: readonly RouteMatch<TRouteId, TModule, TData>[]) => void;
-  setPending: (matches: readonly RouteMatch<TRouteId, TModule, TData>[]) => void;
-  setCached: (matches: readonly RouteMatch<TRouteId, TModule, TData>[]) => void;
+  setActive: (match?: RouteMatch<TRouteId, TModule, TData>) => void;
+  setPending: (match?: RouteMatch<TRouteId, TModule, TData>) => void;
+  cacheMatch: (match: RouteMatch<TRouteId, TModule, TData>) => void;
   removeCached: (matchId: string) => void;
   updateMatch: (
     matchId: string,
@@ -74,44 +74,35 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
   TModule,
   TData
 > {
-  const active = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
-  const pending = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
-  const cached = new Map<string, RouteMatch<TRouteId, TModule, TData>>();
+  type Match = RouteMatch<TRouteId, TModule, TData>;
+  type State = RouterState<TRouteId, TModule, TData>;
+  const active = new Map<string, Match>();
+  const pending = new Map<string, Match>();
+  const cached = new Map<string, Match>();
   const pools = [active, pending, cached];
-  let listeners = new Set<(state: RouterState<TRouteId, TModule, TData>) => void>();
-  const matchListeners = new Map<
-    string,
-    Set<(match: RouteMatch<TRouteId, TModule, TData> | undefined) => void>
-  >();
+  let listeners = new Set<(state: State) => void>();
+  const matchListeners = new Map<string, Set<(match: Match | undefined) => void>>();
   let location = locationForPath("/");
   let resolvedLocation: RouteLocation | null = null;
-  let status: RouterState<TRouteId, TModule, TData>["status"] = "idle";
-  let activeSnapshot: readonly RouteMatch<TRouteId, TModule, TData>[] = [];
-  let pendingSnapshot: readonly RouteMatch<TRouteId, TModule, TData>[] = [];
-  let cachedSnapshot: readonly RouteMatch<TRouteId, TModule, TData>[] = [];
+  let status: State["status"] = "idle";
+  let snapshots: Pick<State, "matches" | "pendingMatches" | "cachedMatches"> | undefined;
   let transactionDepth = 0;
   let dirty = false;
   const changedMatchIds = new Set<string>();
 
-  const readState = (): RouterState<TRouteId, TModule, TData> => ({
-    location,
-    resolvedLocation,
-    status,
-    matches: activeSnapshot,
-    pendingMatches: pendingSnapshot,
-    cachedMatches: cachedSnapshot,
-  });
-
-  const refreshSnapshots = () => {
-    activeSnapshot = [...active.values()];
-    pendingSnapshot = [...pending.values()];
-    cachedSnapshot = [...cached.values()];
+  const readState = (): State => {
+    snapshots ??= {
+      matches: [...active.values()],
+      pendingMatches: [...pending.values()],
+      cachedMatches: [...cached.values()],
+    };
+    return { location, resolvedLocation, status, ...snapshots };
   };
 
   const getMatch = (matchId: string) =>
     active.get(matchId) ?? pending.get(matchId) ?? cached.get(matchId);
 
-  const subscribe = (listener: (state: RouterState<TRouteId, TModule, TData>) => void) => {
+  const subscribe = (listener: (state: State) => void) => {
     const current = listeners;
     current.add(listener);
     return () => current.delete(listener);
@@ -125,12 +116,14 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     if (transactionDepth > 0) {
       return;
     }
-    const next = readState();
     const ids = [...changedMatchIds];
     changedMatchIds.clear();
     dirty = false;
-    for (const listener of listeners) {
-      listener(next);
+    if (listeners.size > 0) {
+      const next = readState();
+      for (const listener of listeners) {
+        listener(next);
+      }
     }
     for (const id of ids) {
       const match = getMatch(id);
@@ -152,43 +145,22 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     }
   };
 
-  const removeFromOtherPools = (
-    id: string,
-    keep: Map<string, RouteMatch<TRouteId, TModule, TData>>,
-  ) => {
-    for (const pool of pools) {
-      if (pool !== keep && pool.delete(id)) {
-        changedMatchIds.add(id);
+  const replaceMatch = (pool: Map<string, Match>, previousId: string | undefined, next?: Match) => {
+    if (previousId !== undefined && previousId !== next?.id && pool.delete(previousId)) {
+      changedMatchIds.add(previousId);
+    } else if (!next || pool.get(next.id) === next) {
+      return;
+    }
+    if (next) {
+      for (const other of pools) {
+        if (other !== pool) {
+          other.delete(next.id);
+        }
       }
+      pool.set(next.id, next);
     }
-  };
-
-  const setPool = (
-    pool: Map<string, RouteMatch<TRouteId, TModule, TData>>,
-    matches: readonly RouteMatch<TRouteId, TModule, TData>[],
-  ) => {
-    let changed = false;
-    const nextIds = new Set(matches.map((match) => match.id));
-    for (const id of pool.keys()) {
-      if (!nextIds.has(id)) {
-        pool.delete(id);
-        changedMatchIds.add(id);
-        changed = true;
-      }
-    }
-    for (const match of matches) {
-      const previous = pool.get(match.id);
-      removeFromOtherPools(match.id, pool);
-      if (previous !== match) {
-        pool.set(match.id, match);
-        changedMatchIds.add(match.id);
-        changed = true;
-      }
-    }
-    if (changed) {
-      refreshSnapshots();
-      notify();
-    }
+    snapshots = undefined;
+    notify(next?.id);
   };
 
   return {
@@ -219,22 +191,10 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
       status = nextStatus;
       notify();
     },
-    setActive(matches) {
-      batch(() => setPool(active, matches));
-    },
-    setPending(matches) {
-      batch(() => setPool(pending, matches));
-    },
-    setCached(matches) {
-      batch(() => setPool(cached, matches));
-    },
-    removeCached(matchId) {
-      if (!cached.delete(matchId)) {
-        return;
-      }
-      refreshSnapshots();
-      notify(matchId);
-    },
+    setActive: (match) => replaceMatch(active, active.keys().next().value, match),
+    setPending: (match) => replaceMatch(pending, pending.keys().next().value, match),
+    cacheMatch: (match) => replaceMatch(cached, match.id, match),
+    removeCached: (matchId) => replaceMatch(cached, matchId),
     updateMatch(matchId, update) {
       const pool = pools.find((candidate) => candidate.has(matchId));
       const current = pool?.get(matchId);
@@ -244,7 +204,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
       const next = update(current);
       if (next !== current) {
         pool.set(matchId, next);
-        refreshSnapshots();
+        snapshots = undefined;
         notify(matchId);
       }
       return true;
@@ -265,7 +225,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
             }
           }
         }
-        refreshSnapshots();
+        snapshots = undefined;
       });
     },
     clear() {
@@ -277,7 +237,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
             }
             pool.clear();
           }
-          refreshSnapshots();
+          snapshots = undefined;
           location = locationForPath("/");
           resolvedLocation = null;
           status = "idle";

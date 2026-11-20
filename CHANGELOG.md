@@ -24,6 +24,10 @@
 
 - Allow preloading a cached route again after navigating away during revalidation.
 
+### Performance
+
+- Update individual cache entries during preload and navigation. Match lists are copied on demand when a caller reads state or a state subscriber needs a snapshot.
+
 ### CI
 
 - Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.
