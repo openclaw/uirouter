@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createRouter, definePage } from "../src/index";
 import { createMemoryHistory, location } from "./fixtures";
 
@@ -78,6 +78,41 @@ describe("router subscriptions", () => {
     expect(updates).toContain("success:loader:first");
     expect(updates.at(-1)).toBe("success:false:second");
   });
+});
+
+it("detaches old subscriptions when the router restarts", async () => {
+  const router = createTestRouter();
+  const history = createMemoryHistory(location("/chat"));
+  const context = { label: "reader" };
+  await router.start(history, "", context);
+  const matchId = router.getState().matches[0].id;
+  const state = vi.fn();
+  const selected = vi.fn();
+  const match = vi.fn();
+  const stopState = router.subscribe(state);
+  const stopSelected = router.subscribeSelector((s) => s.status, selected);
+  const stopMatch = router.subscribeMatch(matchId, match);
+  router.stop();
+  expect(state.mock.lastCall?.[0].status).toBe("idle");
+  state.mockClear();
+  selected.mockClear();
+  match.mockClear();
+
+  await router.start(history, "", context);
+  expect(state).not.toHaveBeenCalled();
+  expect(selected).not.toHaveBeenCalled();
+  expect(match).not.toHaveBeenCalled();
+  router.subscribe(state);
+  router.subscribeSelector((s) => s.status, selected);
+  router.subscribeMatch(matchId, match);
+  stopState();
+  stopSelected();
+  stopMatch();
+  await router.navigate("settings", context);
+  expect(state).toHaveBeenCalled();
+  expect(selected).toHaveBeenCalledWith("success");
+  expect(match).toHaveBeenCalled();
+  router.stop();
 });
 
 describe("router history", () => {
