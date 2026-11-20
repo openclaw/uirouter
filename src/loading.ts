@@ -150,7 +150,11 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     }
     const loaded = Promise.resolve(route.component());
     moduleCache.set(route.id, loaded);
-    void loaded.catch(() => moduleCache.delete(route.id));
+    void loaded.catch(() => {
+      if (moduleCache.get(route.id) === loaded) {
+        moduleCache.delete(route.id);
+      }
+    });
     return loaded;
   };
 

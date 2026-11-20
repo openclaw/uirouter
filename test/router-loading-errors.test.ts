@@ -28,6 +28,26 @@ describe("router loading errors", () => {
     router.stop();
   });
 
+  it("retains a replacement component when an import from before stop rejects", async () => {
+    const pending = deferred<string>();
+    const component = vi
+      .fn(() => Promise.resolve("new module"))
+      .mockReturnValueOnce(pending.promise);
+    const router = createRouter({
+      routes: [{ id: "page", path: "/page", component, loaderDeps: (context: string) => context }],
+    });
+
+    const old = router.preloadRoute("page", "old");
+    router.stop();
+    await router.preloadRoute("page", "replacement");
+    pending.reject(new Error("old import failed"));
+    await old;
+    await router.preloadRoute("page", "another match");
+
+    expect(component).toHaveBeenCalledTimes(2);
+    router.stop();
+  });
+
   it("loads the component even when a synchronous loader fails and permits retry", async () => {
     const failure = new Error("loader failed");
     const component = vi.fn(() => ({ view: "page" }));

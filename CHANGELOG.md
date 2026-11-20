@@ -8,6 +8,8 @@
 
 - Start a new loader when returning to a route whose cancelled navigation is still settling.
 
+- Keep a restarted router’s cached component when an import from before stop rejects.
+
 - Release state, selector, and match subscriptions on stop so listeners from a previous session do not receive updates after restart.
 
 - Resolve seven development-tool security advisories by selecting patched Vite and refreshing compatible source-map and ID-generator dependencies.
