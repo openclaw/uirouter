@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Keep the latest joined location when shared navigation loads publish their component or fail. Thanks @SebTardif.
+
+- Clear preload retention timers when cached matches expire immediately, including on stop. Thanks @SebTardif.
+
 - Keep the module loaded after restart when a component import from before stop resolves later.
 
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.
@@ -39,6 +43,8 @@
 - Keep the last resolved URL during pending and joined navigation without copying cached matches.
 
 ### CI
+
+- Refresh eligible Node types, lint, bundler, Vite, and Vitest development updates while retaining the two-day cooldown, runtime engines, and zero runtime dependencies. Thanks @dependabot[bot].
 
 - Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.
 

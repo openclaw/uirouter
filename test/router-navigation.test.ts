@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createRouter,
   definePage,
@@ -177,5 +177,57 @@ describe("router navigation", () => {
       invalid: false,
       preload: false,
     });
+  });
+
+  it("keeps the joined location when the shared load fails", async () => {
+    const { promise, reject } = deferred<string>();
+    const router = createRouter({
+      routes: [
+        definePage({
+          id: "chat",
+          path: "/chat",
+          component: () => ({ view: "chat" }),
+          loader: () => promise,
+        }),
+      ],
+    });
+    const history = createMemoryHistory(location("/chat", "?first=1"));
+    const started = router.start(history, "", { label: "agent" });
+    const joined = router.navigate(
+      "chat",
+      { label: "agent" },
+      { history: "push" },
+      location("/chat", "?second=1"),
+    );
+    reject(new Error("load failed"));
+    await Promise.allSettled([started, joined]);
+
+    const state = router.getState();
+    expect(history.location()).toEqual(location("/chat", "?second=1"));
+    expect(state.location).toEqual(location("/chat", "?second=1"));
+    expect(state.resolvedLocation).toEqual(location("/chat", "?second=1"));
+    expect(state.matches[0]?.location).toEqual(location("/chat", "?second=1"));
+    expect(state.status).toBe("error");
+    router.stop();
+  });
+
+  it("keeps the joined location while publishing a component before its loader settles", async () => {
+    const module = deferred<string>();
+    const data = deferred<string>();
+    const router = createRouter({
+      routes: [
+        { id: "chat", path: "/chat", component: () => module.promise, loader: () => data.promise },
+      ],
+    });
+    const first = router.navigateLocation(location("/chat", "?first=1"), undefined);
+    const latest = location("/chat", "?second=1");
+    const joined = router.navigateLocation(latest, undefined);
+    module.resolve("chat");
+    await vi.waitFor(() => expect(router.getState().matches[0]?.module).toBe("chat"));
+    expect(router.getState().location).toEqual(latest);
+    expect(router.getState().resolvedLocation).toEqual(latest);
+    data.resolve("loaded");
+    await Promise.all([first, joined]);
+    router.stop();
   });
 });

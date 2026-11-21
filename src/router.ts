@@ -287,7 +287,7 @@ export function createRouter<
               cacheStoredMatch(previous);
               matches.setActive({ ...loadedMatch, module });
               matches.setPending();
-              matches.setLocation(location, location);
+              matches.setLocation(run.location, run.location);
             });
           },
         );
@@ -341,7 +341,7 @@ export function createRouter<
               matches.setActive(matches.getMatch(match.id) ?? failedMatch);
             }
             matches.setPending();
-            matches.setLocation(location, location);
+            matches.setLocation(run.location, run.location);
             matches.setStatus(status);
           });
         } else {
