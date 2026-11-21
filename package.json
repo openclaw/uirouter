@@ -62,5 +62,5 @@
   "engines": {
     "node": "^22.18.0 || >=24.11.0"
   },
-  "packageManager": "pnpm@11.28.10"
+  "packageManager": "pnpm@11.28.12"
 }

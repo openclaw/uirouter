@@ -44,6 +44,8 @@
 
 ### CI
 
+- Refresh the CI Node versions to 22.23.5, 24.22.3, and 26.13.1 and the development pnpm pin to 11.28.12 without changing the package's runtime engine range.
+
 - Refresh eligible Node types, lint, bundler, Vite, and Vitest development updates while retaining the two-day cooldown, runtime engines, and zero runtime dependencies. Thanks @dependabot[bot].
 
 - Start workflow lint on changes to workflows, action manifests, or lint inputs. Manual CI continues to run it.
