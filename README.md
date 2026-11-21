@@ -298,7 +298,7 @@ Path helpers: `normalizeRoutePath`, `normalizeRouteBasePath`.
 ## Scripts
 
 Development uses patched Node 22.23.4+, 24.22.1+, or 26.12.1+. CI qualifies
-Node 26.12.1 on Ubuntu and Node 22.23.4/24.22.1 across Ubuntu, macOS, and
+Node 26.13.1 on Ubuntu and Node 22.23.5/24.22.3 across Ubuntu, macOS, and
 Windows. Node 25 development qualification is retired because that release
 line has no supported incident-key rejection update. The published JavaScript
 engine range above is unchanged and does not establish runtime security.
