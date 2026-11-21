@@ -3,9 +3,17 @@
 <!--
 Describe the concrete problem this PR addresses for consumers of
 `@openclaw/uirouter` (apps, integrators, or downstream OpenClaw surfaces).
-Use one short, plain-language sentence. For fixes, prefer:
+In 1–3 plain sentences, say who is affected, what happens today, and why it
+matters to them. For a bug, name the trigger if known. For a feature or internal
+work, describe the need in the actual workflow without inventing harm.
+Could a reader understand the problem without knowing your proposed fix?
+
+Good: "Background checks can use up a new user's model allowance before they've
+asked the assistant to monitor anything."
+Bad: "Turn off periodic checks on fresh installs."
+
+For fixes, this format can help:
 "Fixes: <what goes wrong> when <trigger or condition>."
-For other changes, describe the need without inventing a bug.
 
 Name the affected router surface (route matching, navigation, loader lifecycle,
 caching, subscriptions, history adapter, exports, types). Do not describe the
