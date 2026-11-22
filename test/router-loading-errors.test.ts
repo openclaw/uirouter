@@ -3,6 +3,35 @@ import { createRouter } from "../src/index";
 import { deferred } from "./fixtures";
 
 describe("router loading errors", () => {
+  it("reports a joined preload's loader failure while the component is still pending", async () => {
+    const component = deferred<string>();
+    const data = deferred<string>();
+    const router = createRouter({
+      routes: [
+        {
+          id: "page",
+          path: "/page",
+          component: () => component.promise,
+          loader: () => data.promise,
+        },
+        { id: "other", path: "/other", component: () => "other" },
+      ],
+    });
+    const preload = router.preloadRoute("page", undefined);
+    const navigation = router.navigate("page", undefined);
+    const error = new Error("data unavailable");
+    data.reject(error);
+    await expect(navigation).rejects.toBe(error);
+    await preload;
+    expect(router.getState().matches).toMatchObject([{ routeId: "page", status: "error", error }]);
+
+    await router.navigate("other", undefined);
+    component.resolve("page");
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(router.getState().matches).toMatchObject([{ routeId: "other", module: "other" }]);
+    router.stop();
+  });
+
   it("observes loader rejection when the component throws synchronously", async () => {
     const componentError = new Error("component failed");
     const loaderError = new Error("loader failed");

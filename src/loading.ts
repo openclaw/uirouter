@@ -38,7 +38,11 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
   const moduleCache = new Map<TRouteId, Promise<TModule>>();
   const inFlight = new Map<
     string,
-    { signal: AbortSignal; promise: Promise<RouteLoadResult<TModule, TData>> }
+    {
+      signal: AbortSignal;
+      module: Promise<TModule>;
+      promise: Promise<RouteLoadResult<TModule, TData>>;
+    }
   >();
   const gcTimers = new Map<string, ReturnType<typeof globalThis.setTimeout>>();
   const freshTimeFor = (match: Match, route: Route, cause: RouteHookOptions["cause"]) =>
@@ -155,6 +159,14 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
   ): Promise<RouteLoadResult<TModule, TData>> => {
     const existing = inFlight.get(match.id);
     if (existing && !existing.signal.aborted && !force) {
+      if (onComponentLoaded) {
+        // A joined navigation can show the preload's component while its data is pending.
+        const [result] = await Promise.all([
+          existing.promise,
+          existing.module.then(onComponentLoaded),
+        ]);
+        return result;
+      }
       return existing.promise;
     }
     const current = matchStore.getMatch(match.id) ?? match;
@@ -208,7 +220,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
         return { data: dataResult.data, module };
       },
     );
-    inFlight.set(match.id, { signal: hookOptions.signal, promise });
+    inFlight.set(match.id, { signal: hookOptions.signal, module: visibleModulePromise, promise });
     try {
       return await promise;
     } catch (error) {

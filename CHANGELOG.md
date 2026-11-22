@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Show the ready component when navigation joins a preload whose data is still loading.
+
 - Keep the latest joined location when shared navigation loads publish their component or fail. Thanks @SebTardif.
 
 - Clear preload retention timers when cached matches expire immediately, including on stop. Thanks @SebTardif.
