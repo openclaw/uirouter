@@ -240,54 +240,60 @@ describe("router loading", () => {
     });
   });
 
-  it("preloads a route into cache and reuses the fresh match on navigation", async () => {
-    const loadCauses: RouteLoadCause[] = [];
-    let componentCalls = 0;
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"chat", TestContext, TestModule, TestData>({
-          id: "chat",
-          path: "/chat",
-          component: () => {
-            componentCalls += 1;
-            return { view: "chat" };
+  it.each([
+    ["background", Infinity, 0, "preload:seed", "navigation:return"],
+    ["background", 0, Infinity, "navigation:first", "navigation:first"],
+    ["blocking", 0, Infinity, "navigation:first", "navigation:first"],
+  ] as const)(
+    "uses the producing load's freshness on promotion (%s, preloadStaleTime %s)",
+    async (staleReloadMode, preloadStaleTime, staleTime, firstData, returnData) => {
+      const component = vi.fn(() => "chat");
+      const causes: RouteLoadCause[] = [];
+      const router = createRouter({
+        routes: [
+          {
+            id: "chat",
+            path: "/chat",
+            component,
+            staleReloadMode,
+            preloadStaleTime,
+            staleTime,
+            loader: (context: string, { cause }) => {
+              causes.push(cause);
+              return `${cause}:${context}`;
+            },
           },
-          loader: (context, options) => {
-            loadCauses.push(options.cause);
-            return {
-              label: context.label,
-              route: "chat",
-              cause: options.cause,
-            };
-          },
-        }),
-      ],
-    });
-
-    await router.preloadRoute("chat", { label: "preloaded" });
-
-    const [cached] = router.getState().cachedMatches;
-    expect(cached).toMatchObject({
-      routeId: "chat",
-      status: "success",
-      preload: true,
-      data: { label: "preloaded", route: "chat", cause: "preload" },
-      module: { view: "chat" },
-    });
-
-    await router.navigate("chat", { label: "navigated" });
-
-    const [match] = router.getState().matches;
-    expect(loadCauses).toEqual(["preload"]);
-    expect(componentCalls).toBe(1);
-    expect(match).toMatchObject({
-      routeId: "chat",
-      status: "success",
-      preload: false,
-      data: { label: "preloaded", route: "chat", cause: "preload" },
-      module: { view: "chat" },
-    });
-  });
+          { id: "other", path: "/other", component: () => "other" },
+        ],
+      });
+      await router.preloadRoute("chat", "seed");
+      expect(router.getState().cachedMatches).toMatchObject([
+        { routeId: "chat", status: "success", preload: true, module: "chat", data: "preload:seed" },
+      ]);
+      const active = () => router.getState().matches[0];
+      await router.navigate("chat", "first");
+      await expect.poll(active).toMatchObject({
+        routeId: "chat",
+        status: "success",
+        module: "chat",
+        data: firstData,
+        preload: false,
+        isFetching: false,
+      });
+      await router.navigate("other", "away");
+      await router.navigate("chat", "return");
+      await expect.poll(active).toMatchObject({
+        routeId: "chat",
+        status: "success",
+        data: returnData,
+        preload: false,
+        isFetching: false,
+      });
+      expect(causes).toEqual(["preload", "navigation"]);
+      expect(component).toHaveBeenCalledOnce();
+      router.stop();
+    },
+  );
 
   it("invalidates the active route and refreshes it with the latest context", async () => {
     let loadCount = 0;

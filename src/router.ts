@@ -219,7 +219,6 @@ export function createRouter<
           error: undefined,
           invalid: sameMatch || reusable.invalid,
           isFetching: sameMatch ? "loader" : false,
-          preload: false,
         }
       : createRouteMatch(routeId, location, deps, cause, controller);
     const activatedCachedMatch =
@@ -227,7 +226,6 @@ export function createRouter<
         ? {
             ...match,
             isFetching: backgroundReload ? ("loader" as const) : (false as const),
-            preload: cachedFresh && !backgroundReload,
           }
         : undefined;
     let targetPublished = Boolean(activatedCachedMatch);

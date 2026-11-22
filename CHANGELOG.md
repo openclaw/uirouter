@@ -32,6 +32,8 @@
 
 - Force a fresh load when revalidating a named route that is still fresh in the cache.
 
+- Use the preload freshness window on the first navigation to preloaded data and the navigation freshness window on subsequent returns.
+
 - Cancel a preload superseded by a forced load so its late failure cannot evict fresh data or follow an obsolete redirect.
 
 - Allow preloading a cached route again after navigating away during revalidation.
