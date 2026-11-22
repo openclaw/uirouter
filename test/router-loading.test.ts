@@ -273,6 +273,9 @@ describe("router loading", () => {
       const active = () => router.getState().matches[0];
       await router.navigate("chat", "first");
       await expect.poll(active).toMatchObject({
+        routeId: "chat",
+        status: "success",
+        module: "chat",
         data: firstData,
         preload: false,
         isFetching: false,
