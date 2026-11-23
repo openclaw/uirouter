@@ -208,7 +208,8 @@ export function createRouter<
     if (forceLoad && reusable?.isFetching) {
       reusable.abortController.abort();
     }
-    const controller = inFlightAbortController(reusable) ?? new AbortController();
+    const sharedController = inFlightAbortController(reusable);
+    const controller = sharedController ?? new AbortController();
     const cause: RouteLoadCause = revalidating ? "revalidate" : "navigation";
     const match: RouteMatch<TRouteId, TModule, TData> = reusable
       ? {
@@ -218,7 +219,7 @@ export function createRouter<
           cause,
           error: undefined,
           invalid: sameMatch || reusable.invalid,
-          isFetching: sameMatch ? "loader" : false,
+          isFetching: sameMatch || sharedController ? "loader" : false,
         }
       : createRouteMatch(routeId, location, deps, cause, controller);
     const activatedCachedMatch =

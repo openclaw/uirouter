@@ -27,30 +27,42 @@ describe("router loading", () => {
     vi.useRealTimers();
   });
 
-  it("starts component and data loads in parallel and publishes the component first", async () => {
-    const module = deferred<string>();
-    const data = deferred<string>();
-    const component = vi.fn(() => module.promise);
-    const loader = vi.fn(() => data.promise);
-    const router = createRouter({ routes: [{ id: "chat", path: "/chat", component, loader }] });
+  it.each(["direct", "join before component", "join after component"])(
+    "publishes the component while data is pending (%s)",
+    async (timing) => {
+      const module = deferred<string>();
+      const data = deferred<string>();
+      const component = vi.fn(() => module.promise);
+      const loader = vi.fn(() => data.promise);
+      const router = createRouter({ routes: [{ id: "chat", path: "/chat", component, loader }] });
 
-    const navigation = router.navigate("chat", undefined);
-    const calls = () => [component.mock.calls.length, loader.mock.calls.length];
-    await expect.poll(calls).toEqual([1, 1]);
-    module.resolve("view");
-    await expect.poll(() => router.getState().matches[0]?.module).toBe("view");
-    expect(router.getState()).toMatchObject({
-      status: "loading",
-      pendingMatches: [],
-      matches: [{ routeId: "chat", status: "pending" }],
-    });
-    expect(router.getState().matches[0].data).toBeUndefined();
+      const preload = timing === "direct" ? undefined : router.preloadRoute("chat", undefined);
+      if (timing === "join after component") {
+        module.resolve("view");
+        await expect.poll(() => router.getState().cachedMatches[0]?.module).toBe("view");
+        expect(router.getState().matches).toEqual([]);
+      }
+      const navigation = router.navigate("chat", undefined);
+      const calls = () => [component.mock.calls.length, loader.mock.calls.length];
+      await expect.poll(calls).toEqual([1, 1]);
+      if (timing !== "join after component") {
+        module.resolve("view");
+      }
+      await expect.poll(() => router.getState().matches[0]?.module).toBe("view");
+      expect(router.getState()).toMatchObject({
+        status: "loading",
+        pendingMatches: [],
+        matches: [{ routeId: "chat", status: "pending", isFetching: "loader" }],
+      });
+      expect(router.getState().matches[0].data).toBeUndefined();
 
-    data.resolve("loaded");
-    await navigation;
-    expect(router.getState().matches).toMatchObject([{ status: "success", data: "loaded" }]);
-    router.stop();
-  });
+      data.resolve("loaded");
+      await Promise.all([navigation, preload]);
+      expect(calls()).toEqual([1, 1]);
+      expect(router.getState().matches).toMatchObject([{ status: "success", data: "loaded" }]);
+      router.stop();
+    },
+  );
 
   it("starts a fresh loader when returning to a cancelled match", async () => {
     const first = deferred<string>();

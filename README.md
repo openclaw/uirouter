@@ -214,7 +214,9 @@ await router.invalidate("chat"); // single route
 await router.revalidate(context); // force refetch of the active match
 ```
 
-`preload*` populates the cache without making the route active. If a cached
+`preload*` populates the cache without making the route active. Navigating to
+an in-flight preload shares its component and data loads. The router exposes
+the ready component on the active match while data is still pending. If a cached
 match is fresh on the next navigation, it's promoted instantly; otherwise the
 router refetches in the background or blocks per `staleReloadMode`.
 
