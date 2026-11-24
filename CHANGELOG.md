@@ -10,6 +10,8 @@
 
 - Clear preload retention timers when cached matches expire immediately, including on stop. Thanks @SebTardif.
 
+- Keep a cached match while its preload refresh is running so it can finish or be cancelled on stop.
+
 - Keep the module loaded after restart when a component import from before stop resolves later.
 
 - Keep empty route IDs and dependency keys containing null characters distinct during matching, and resolve generated paths for routes with repeated trailing slashes.

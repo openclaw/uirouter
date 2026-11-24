@@ -428,18 +428,56 @@ describe("router loading", () => {
     });
   });
 
-  it("garbage-collects expired cached preload matches", async () => {
-    vi.useFakeTimers();
-    const router = createRouter({
-      routes: [{ id: "chat", path: "/chat", preloadGcTime: 10, component: () => "chat" }],
-    });
-    await router.preloadRoute("chat", undefined);
-    await vi.advanceTimersByTimeAsync(9);
-    expect(router.getState().cachedMatches).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(1);
-    expect(router.getState().cachedMatches).toEqual([]);
-    router.stop();
-  });
+  it.each(["resolve", "stop"] as const)(
+    "keeps a refreshing preload past its old expiry until %s",
+    async (action) => {
+      vi.useFakeTimers();
+      const data = deferred<string>();
+      let refreshSignal: AbortSignal | undefined;
+      const router = createRouter({
+        routes: [
+          {
+            id: "chat",
+            path: "/chat",
+            component: () => "chat",
+            preloadGcTime: 10,
+            preloadStaleTime: 0,
+            loader: (refresh: boolean, { signal }) => {
+              if (!refresh) {
+                return "first";
+              }
+              refreshSignal = signal;
+              return data.promise;
+            },
+          },
+        ],
+      });
+      await router.preloadRoute("chat", false);
+      await vi.advanceTimersByTimeAsync(9);
+      expect(router.getState().cachedMatches).toMatchObject([{ data: "first" }]);
+      const refresh = router.preloadRoute("chat", true);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(router.getState().cachedMatches).toMatchObject([
+        { data: "first", isFetching: "loader" },
+      ]);
+
+      if (action === "stop") {
+        router.stop();
+      }
+      expect(refreshSignal?.aborted).toBe(action === "stop");
+      data.resolve("second");
+      await refresh;
+      if (action === "resolve") {
+        await vi.advanceTimersByTimeAsync(9);
+        expect(router.getState().cachedMatches).toMatchObject([
+          { data: "second", isFetching: false },
+        ]);
+        await vi.advanceTimersByTimeAsync(1);
+      }
+      expect(router.getState().cachedMatches).toEqual([]);
+      router.stop();
+    },
+  );
 
   it.each(["navigation", "preload"] as const)(
     "keeps %s matches with infinite retention without a timer",
@@ -448,10 +486,7 @@ describe("router loading", () => {
       const router = createRouter({
         gcTime: cause === "navigation" ? Infinity : 10,
         preloadGcTime: cause === "preload" ? Infinity : 10,
-        routes: [
-          { id: "chat", path: "/chat", component: () => "chat" },
-          { id: "other", path: "/other", component: () => "other" },
-        ],
+        routes: cacheRoutes,
       });
       if (cause === "preload") {
         await router.preloadRoute("chat", undefined);
@@ -502,10 +537,7 @@ describe("router loading", () => {
       const router = createRouter({
         preloadGcTime: retention,
         gcTime: retention,
-        routes: [
-          { id: "chat", path: "/chat", component: () => "chat" },
-          { id: "other", path: "/other", component: () => "other" },
-        ],
+        routes: cacheRoutes,
       });
 
       if (cause === "preload") {
