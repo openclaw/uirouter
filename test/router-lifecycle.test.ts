@@ -3,6 +3,44 @@ import { createRouter } from "../src/index";
 import { deferred } from "./fixtures";
 
 describe("router lifecycle", () => {
+  it.each(["onEnter", "onLeave"] as const)(
+    "lets a subscriber stop the router when %s fails",
+    async (hook) => {
+      const failure = new Error("hook failed");
+      const fail = () => {
+        throw failure;
+      };
+      const router = createRouter({
+        routes: [
+          {
+            id: "from",
+            path: "/from",
+            component: () => "from",
+            onLeave: hook === "onLeave" ? fail : undefined,
+          },
+          {
+            id: "to",
+            path: "/to",
+            component: () => "to",
+            onEnter: hook === "onEnter" ? fail : undefined,
+          },
+        ],
+      });
+      await router.navigate("from", undefined);
+      const statuses: string[] = [];
+      router.subscribe((state) => {
+        if (state.matches[0]?.error === failure) {
+          statuses.push(state.status);
+          router.stop();
+        }
+      });
+
+      await expect(router.navigate("to", undefined)).rejects.toBe(failure);
+      expect(statuses).toEqual(["error"]);
+      expect(router.getState()).toMatchObject({ status: "idle", matches: [] });
+    },
+  );
+
   it.each(["navigate", "stop", "current"] as const)(
     "only publishes an asynchronous hook error while its navigation is current (%s)",
     async (action) => {
