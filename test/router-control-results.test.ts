@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createRouter, definePage, notFound, redirect } from "../src/index";
 import { createMemoryHistory, location } from "./fixtures";
 
-type RouteId = "source" | "target" | "missing" | "alpha" | "beta";
 type TestContext = {
   label: string;
 };
@@ -81,7 +80,7 @@ describe("router control results", () => {
     "rejects a multi-route cycle during %s",
     async (method) => {
       let visits = 0;
-      const router = createRouter<RouteId, TestContext, TestModule, TestData>({
+      const router = createRouter<"alpha" | "beta", TestContext, TestModule, TestData>({
         routes: [
           definePage<"alpha", TestContext, TestModule, TestData>({
             id: "alpha",
@@ -247,53 +246,47 @@ describe("router control results", () => {
     },
   );
 
-  it("publishes not-found route state from loaders", async () => {
-    const result = notFound({ code: "missing-record" });
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage<"missing", TestContext, TestModule, TestData>({
-          id: "missing",
-          path: "/missing",
-          component: () => ({ view: "missing" }),
-          loader: () => result,
-        }),
-      ],
+  it("recovers a missing record and clears its failed match on an unmatched URL", async () => {
+    const missing = notFound({ code: "missing-record" });
+    const loader = vi
+      .fn<() => string | typeof missing>()
+      .mockReturnValueOnce(missing)
+      .mockReturnValueOnce("restored")
+      .mockImplementationOnce(() => {
+        throw missing;
+      });
+    const router = createRouter({
+      routes: [{ id: "record", path: "/record", component: () => "record", loader }],
     });
-
-    await expect(router.navigate("missing", { label: "agent" })).rejects.toBe(result);
-
-    const state = router.getState();
-    const [match] = state.matches;
-    expect(state.status).toBe("notFound");
-    expect(state.location).toEqual(location("/missing"));
-    expect(state.resolvedLocation).toEqual(location("/missing"));
-    expect(match).toMatchObject({
-      routeId: "missing",
-      status: "notFound",
-      error: result,
-      isFetching: false,
-    });
-  });
-
-  it("marks unmatched locations as not found without throwing", async () => {
-    const router = createRouter<RouteId, TestContext, TestModule, TestData>({
-      routes: [
-        definePage({
-          id: "source",
-          path: "/source",
-          component: () => ({ view: "source" }),
-        }),
-      ],
-    });
-
-    await router.navigateLocation(location("/unmatched", "?q=1"), { label: "agent" });
-
+    const record = location("/record", "?id=1");
+    const failed = { routeId: "record", status: "notFound", error: missing, isFetching: false };
+    await expect(router.navigateLocation(record, undefined)).rejects.toBe(missing);
     expect(router.getState()).toMatchObject({
       status: "notFound",
-      location: location("/unmatched", "?q=1"),
+      location: record,
+      resolvedLocation: record,
+      matches: [failed],
+    });
+
+    const { id } = router.getState().matches[0];
+    await router.revalidate(undefined);
+    expect(router.getState()).toMatchObject({
+      status: "success",
+      matches: [{ id, status: "success", data: "restored", error: undefined }],
+    });
+    await expect(router.revalidate(undefined)).rejects.toBe(missing);
+    expect(router.getState()).toMatchObject({ status: "notFound", matches: [failed] });
+
+    const unmatched = location("/unmatched", "?q=1");
+    await router.navigateLocation(unmatched, undefined);
+    expect(router.getState()).toMatchObject({
+      status: "notFound",
+      location: unmatched,
       resolvedLocation: null,
       matches: [],
       pendingMatches: [],
     });
+    expect(router.getMatch(id)).toBeUndefined();
+    router.stop();
   });
 });
