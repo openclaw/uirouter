@@ -402,12 +402,14 @@ export function createRouter<
       }
       if (lifecycleErrors.length > 0) {
         const error = lifecycleErrors[0];
-        matches.updateMatch(resolvedMatch.id, (current) => ({
-          ...current,
-          status: "error",
-          error,
-        }));
-        matches.setStatus("error");
+        matches.batch(() => {
+          matches.updateMatch(resolvedMatch.id, (current) => ({
+            ...current,
+            status: "error",
+            error,
+          }));
+          matches.setStatus("error");
+        });
         if (hookOptions.shouldRun()) {
           currentRun = null;
         }
