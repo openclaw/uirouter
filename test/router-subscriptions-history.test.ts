@@ -49,6 +49,37 @@ describe("router subscriptions", () => {
     expect(both.map((match) => match.routeId)).toEqual(["chat", "settings"]);
     expect(both[0]).toBe(first[0]);
     expect(router.getState().cachedMatches).toBe(both);
+
+    await router.navigate("chat", { label: "first" });
+    expect(router.getState().cachedMatches.map((match) => match.routeId)).toEqual(["settings"]);
+    expect(router.getState().matches[0]?.routeId).toBe("chat");
+    expect(both).toHaveLength(2);
+    router.stop();
+  });
+
+  it("keeps selectors quiet when only another match list changes", async () => {
+    const router = createTestRouter();
+    const context = { label: "reader" };
+    await router.navigate("chat", context);
+    const visible = router.getState().matches;
+    await router.invalidate("settings");
+    expect(router.getState().matches).toBe(visible);
+
+    const active = vi.fn();
+    const pending = vi.fn();
+    const cached = vi.fn();
+    router.subscribeSelector((state) => state.matches, active);
+    router.subscribeSelector((state) => state.pendingMatches, pending);
+    router.subscribeSelector((state) => state.cachedMatches, cached);
+    await router.preloadRoute("settings", context);
+    expect(active).not.toHaveBeenCalled();
+    expect(pending).not.toHaveBeenCalled();
+    expect(cached).toHaveBeenCalled();
+
+    cached.mockClear();
+    await router.revalidate(context);
+    expect(active).toHaveBeenCalled();
+    expect(cached).not.toHaveBeenCalled();
     router.stop();
   });
 
