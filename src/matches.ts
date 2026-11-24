@@ -76,6 +76,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
 > {
   type Match = RouteMatch<TRouteId, TModule, TData>;
   type State = RouterState<TRouteId, TModule, TData>;
+  type Pool = Map<string, Match>;
   const active = new Map<string, Match>();
   const pending = new Map<string, Match>();
   const cached = new Map<string, Match>();
@@ -85,19 +86,29 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
   let location = locationForPath("/");
   let resolvedLocation: RouteLocation | null = null;
   let status: State["status"] = "idle";
-  let snapshots: Pick<State, "matches" | "pendingMatches" | "cachedMatches"> | undefined;
+  const snapshots = new Map<Pool, readonly Match[]>();
   let transactionDepth = 0;
   let dirty = false;
   const changedMatchIds = new Set<string>();
 
-  const readState = (): State => {
-    snapshots ??= {
-      matches: [...active.values()],
-      pendingMatches: [...pending.values()],
-      cachedMatches: [...cached.values()],
-    };
-    return { location, resolvedLocation, status, ...snapshots };
+  const snapshot = (pool: Pool) => {
+    const previous = snapshots.get(pool);
+    if (previous) {
+      return previous;
+    }
+    const next = [...pool.values()];
+    snapshots.set(pool, next);
+    return next;
   };
+
+  const readState = (): State => ({
+    location,
+    resolvedLocation,
+    status,
+    matches: snapshot(active),
+    pendingMatches: snapshot(pending),
+    cachedMatches: snapshot(cached),
+  });
 
   const getMatch = (matchId: string) =>
     active.get(matchId) ?? pending.get(matchId) ?? cached.get(matchId);
@@ -145,7 +156,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     }
   };
 
-  const replaceMatch = (pool: Map<string, Match>, previousId: string | undefined, next?: Match) => {
+  const replaceMatch = (pool: Pool, previousId: string | undefined, next?: Match) => {
     if (previousId !== undefined && previousId !== next?.id && pool.delete(previousId)) {
       changedMatchIds.add(previousId);
     } else if (!next || pool.get(next.id) === next) {
@@ -153,13 +164,13 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
     }
     if (next) {
       for (const other of pools) {
-        if (other !== pool) {
-          other.delete(next.id);
+        if (other !== pool && other.delete(next.id)) {
+          snapshots.delete(other);
         }
       }
       pool.set(next.id, next);
     }
-    snapshots = undefined;
+    snapshots.delete(pool);
     notify(next?.id);
   };
 
@@ -204,7 +215,7 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
       const next = update(current);
       if (next !== current) {
         pool.set(matchId, next);
-        snapshots = undefined;
+        snapshots.delete(pool);
         notify(matchId);
       }
       return true;
@@ -221,11 +232,11 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
                   ? { status: "pending" as const, error: undefined }
                   : {}),
               });
+              snapshots.delete(pool);
               notify(id);
             }
           }
         }
-        snapshots = undefined;
       });
     },
     clear() {
@@ -235,9 +246,11 @@ export function createMatchStore<TRouteId extends string, TModule, TData>(): Mat
             for (const id of pool.keys()) {
               changedMatchIds.add(id);
             }
-            pool.clear();
+            if (pool.size > 0) {
+              pool.clear();
+              snapshots.delete(pool);
+            }
           }
-          snapshots = undefined;
           location = locationForPath("/");
           resolvedLocation = null;
           status = "idle";

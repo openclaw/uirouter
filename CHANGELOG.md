@@ -44,6 +44,8 @@
 
 ### Performance
 
+- Keep active, pending, and cached match lists stable when only another list changes. Preloading a route no longer wakes subscribers selecting the active list.
+
 - Update individual cache entries during preload and navigation. Match lists are copied on demand when a caller reads state or a state subscriber needs a snapshot.
 
 - Keep the last resolved URL during pending and joined navigation without copying cached matches.
