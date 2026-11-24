@@ -203,6 +203,9 @@ router.subscribeMatch(matchId, (match) => {
 Selector subscriptions use `Object.is` by default; pass a custom `equal`
 comparator for structural checks.
 
+When navigation joins an in-flight load, the requested location and the match's
+location change in the same notification.
+
 ## Preloading, invalidation, and revalidation
 
 ```ts
