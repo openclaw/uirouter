@@ -3,6 +3,55 @@ import { createRouter } from "../src/index";
 import { deferred } from "./fixtures";
 
 describe("router loading errors", () => {
+  it("skips the component when the loader stops the router during startup", async () => {
+    const data = deferred<string>();
+    const component = vi.fn(() => "page");
+    const loader = vi.fn(() => Promise.resolve("fresh"));
+    const router = createRouter({ routes: [{ id: "page", path: "/page", component, loader }] });
+    loader.mockImplementationOnce(() => {
+      router.stop();
+      return data.promise;
+    });
+
+    const stopped = router.navigate("page", undefined);
+    data.reject(new Error("cancelled load"));
+    await stopped;
+    expect(component).not.toHaveBeenCalled();
+    expect(router.getState().status).toBe("idle");
+    await router.navigate("page", undefined);
+    expect(component).toHaveBeenCalledOnce();
+    expect(router.getState().matches[0]).toMatchObject({ data: "fresh", module: "page" });
+    router.stop();
+  });
+
+  it("keeps the replacement load and component when a factory restarts the router", async () => {
+    const data = deferred<string>();
+    const loader = vi.fn(() => data.promise);
+    const component = vi.fn(() => "replacement");
+    const router = createRouter({
+      routes: [{ id: "page", path: "/page", component, loader, loaderDeps: (key: string) => key }],
+    });
+    let replacement: Promise<void> | undefined;
+    component.mockImplementationOnce(() => {
+      router.stop();
+      replacement = router.preloadRoute("page", "same");
+      return "discarded";
+    });
+
+    const old = router.preloadRoute("page", "same");
+    const joined = router.preloadRoute("page", "same");
+    expect(loader).toHaveBeenCalledTimes(2);
+    data.resolve("fresh");
+    await Promise.all([old, replacement, joined]);
+    await router.preloadRoute("page", "another");
+    expect(router.getState().cachedMatches.map((match) => match.module)).toEqual([
+      "replacement",
+      "replacement",
+    ]);
+    expect(component).toHaveBeenCalledTimes(2);
+    router.stop();
+  });
+
   it("reports a joined preload's loader failure while the component is still pending", async () => {
     const component = deferred<string>();
     const data = deferred<string>();
