@@ -96,7 +96,8 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     (timer as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
   };
 
-  const loadModule = async (route: Route, match: Match): Promise<TModule> => {
+  const loadModule = async (route: Route, match: Match, signal: AbortSignal): Promise<TModule> => {
+    signal.throwIfAborted();
     if (match.module !== undefined) {
       return Promise.resolve(match.module);
     }
@@ -105,6 +106,10 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       return cached;
     }
     const loaded = Promise.resolve(route.component());
+    // The factory can stop the router and start a replacement import before it returns.
+    if (signal.aborted) {
+      return loaded;
+    }
     moduleCache.set(route.id, loaded);
     void loaded.catch(() => {
       if (moduleCache.get(route.id) === loaded) {
@@ -181,7 +186,7 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
       );
     };
     const dataPromise = loadData(current, route, context, hookOptions, force);
-    const modulePromise = loadModule(route, current);
+    const modulePromise = loadModule(route, current, hookOptions.signal);
     const visibleModulePromise = modulePromise.then((module) => {
       if (isCurrentFetch(current.id)) {
         matchStore.updateMatch(current.id, (next) => ({ ...next, module }));
@@ -212,7 +217,9 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
         return { data: dataResult.data, module };
       },
     );
-    inFlight.set(match.id, { signal: hookOptions.signal, module: visibleModulePromise, promise });
+    if (isCurrentFetch(match.id)) {
+      inFlight.set(match.id, { signal: hookOptions.signal, module: visibleModulePromise, promise });
+    }
     try {
       return await promise;
     } catch (error) {

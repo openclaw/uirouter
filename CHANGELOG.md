@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Keep a replacement component and data load when a loader or component factory stops the router during startup.
+
 - Publish the requested URL and match URL together when navigation joins a pending load. Subscribers can stop or navigate again without the earlier join restoring its URL.
 
 - Show the ready component when navigation joins a preload whose data is still loading.
