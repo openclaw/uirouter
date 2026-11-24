@@ -179,6 +179,45 @@ describe("router navigation", () => {
     });
   });
 
+  it.each(["stop", "join again"])("lets a subscriber %s during a join", async (action) => {
+    const component = deferred<string>();
+    const router = createRouter({
+      routes: [{ id: "chat", path: "/chat", component: () => component.promise }],
+    });
+    const idle = router.getState();
+    const first = router.navigateLocation(location("/chat", "?first"), undefined);
+    const second = location("/chat", "?second");
+    const third = location("/chat", "?third");
+    const observed = vi.fn();
+    let nested: Promise<void> | undefined;
+    router.subscribe((state) => {
+      if (state.pendingMatches[0]?.location.search === second.search) {
+        observed(state.location);
+        if (action === "stop") {
+          router.stop();
+        } else {
+          nested = router.navigateLocation(third, undefined);
+        }
+      }
+    });
+
+    const joined = router.navigateLocation(second, undefined);
+    component.resolve("chat");
+    await Promise.all([first, joined, nested]);
+    expect(observed).toHaveBeenCalledExactlyOnceWith(second);
+    if (action === "stop") {
+      expect(router.getState()).toEqual(idle);
+    } else {
+      expect(router.getState()).toMatchObject({
+        status: "success",
+        location: third,
+        resolvedLocation: third,
+        matches: [{ location: third }],
+      });
+    }
+    router.stop();
+  });
+
   it("keeps the joined location when the shared load fails", async () => {
     const { promise, reject } = deferred<string>();
     const router = createRouter({

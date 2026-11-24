@@ -204,6 +204,9 @@ Selector subscriptions use `Object.is` by default; pass a custom `equal`
 comparator for structural checks. Each of `matches`, `pendingMatches`, and
 `cachedMatches` keeps its array reference while its entries stay the same.
 
+When navigation joins an in-flight load, the requested location and the match's
+location change in the same notification.
+
 ## Preloading, invalidation, and revalidation
 
 ```ts

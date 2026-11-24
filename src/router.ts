@@ -185,9 +185,11 @@ export function createRouter<
 
     const ongoing = currentRun;
     if (ongoing?.matchId === matchId && ongoing.promise && !ongoing.controller.signal.aborted) {
-      matches.updateMatch(matchId, (current) => ({ ...current, location }));
-      matches.setLocation(location);
       ongoing.location = location;
+      matches.batch(() => {
+        matches.updateMatch(matchId, (current) => ({ ...current, location }));
+        matches.setLocation(location);
+      });
       return ongoing.promise;
     }
 
