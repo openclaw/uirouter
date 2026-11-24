@@ -56,48 +56,41 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
     (!route.loader || Date.now() - match.updatedAt < freshTimeFor(match, route, cause));
 
   const scheduleGc = (match: Match, route: Route) => {
+    const previousTimer = gcTimers.get(match.id);
+    if (previousTimer !== undefined) {
+      globalThis.clearTimeout(previousTimer);
+      gcTimers.delete(match.id);
+    }
+    if (match.isFetching || !matchStore.getCachedMatch(match.id)) {
+      return;
+    }
     const gcTime = match.preload
       ? (route.preloadGcTime ?? options.preloadGcTime)
       : (route.gcTime ?? options.gcTime);
     if (gcTime === Infinity) {
-      const previousTimer = gcTimers.get(match.id);
-      if (previousTimer) {
-        globalThis.clearTimeout(previousTimer);
-        gcTimers.delete(match.id);
-      }
       return;
     }
     const remaining = gcTime - (Date.now() - match.updatedAt);
-    if (!matchStore.getCachedMatch(match.id) || remaining <= 0) {
-      if (remaining <= 0) {
-        const previousTimer = gcTimers.get(match.id);
-        if (previousTimer) {
-          globalThis.clearTimeout(previousTimer);
-        }
-        matchStore.removeCached(match.id);
-        gcTimers.delete(match.id);
-      }
+    if (remaining <= 0) {
+      matchStore.removeCached(match.id);
       return;
-    }
-    const previousTimer = gcTimers.get(match.id);
-    if (previousTimer) {
-      globalThis.clearTimeout(previousTimer);
     }
     const delay = remaining > MAX_TIMEOUT_MS ? MAX_TIMEOUT_MS : remaining;
     const timer = globalThis.setTimeout(() => {
+      if (gcTimers.get(match.id) !== timer) {
+        return;
+      }
+      gcTimers.delete(match.id);
       const current = matchStore.getCachedMatch(match.id);
-      if (!current) {
-        if (gcTimers.get(match.id) === timer) {
-          gcTimers.delete(match.id);
-        }
+      // A refresh still owns this match. Its result will schedule the next expiry.
+      if (!current || current.isFetching) {
         return;
       }
       if (Date.now() - current.updatedAt < gcTime) {
         scheduleGc(current, route);
-        return;
+      } else {
+        matchStore.removeCached(match.id);
       }
-      matchStore.removeCached(match.id);
-      gcTimers.delete(match.id);
     }, delay);
     gcTimers.set(match.id, timer);
     (timer as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
@@ -134,7 +127,6 @@ export function createRouteLoading<TRouteId extends string, TLoadContext, TModul
         ...next,
         preload: hookOptions.cause === "preload",
       }));
-      scheduleGc(current, route);
       return Promise.resolve({ data: current.data, updatedAt: current.updatedAt });
     }
     const loaded = route.loader?.(context, {
