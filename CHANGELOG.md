@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.3 - 2026-11-25
+
+**Highlights:** Preserve navigation and cache state across joined loads, revalidation, and router restarts; reduce unnecessary subscriber updates.
+
 ### Fixed
 
 - Publish lifecycle hook errors to match and router state together so a subscriber can stop the router when a hook fails.
